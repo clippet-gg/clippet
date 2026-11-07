@@ -516,7 +516,7 @@ func TestSharePageOwnerSeesViewsAndControls(t *testing.T) {
 	// that all start hidden — the preview does not exist until it is asked
 	// for, and this clip has none.
 	mustContain(t, body, `data-gif data-gif-url="/api/clips/`+f.ready.ID+`/preview.gif" data-gif-post-url="/api/clips/`+f.ready.ID+`/gif"`,
-		`data-gif-go`, `data-gif-download download hidden`, `data-gif-status hidden`, `data-gif-img alt="" hidden`)
+		`data-gif-go`, `data-gif-download download hidden`, `data-gif-status hidden`, `data-gif-img alt="GIF preview" hidden`)
 	mustNotContain(t, body, `data-gif-ready`)
 	// The re-upload (ROADMAP #31, §20 erratum 135). It is a real <form> with a
 	// real action, so it degrades to a plain POST without app.js, and it names
@@ -561,7 +561,7 @@ func TestSharePageShowsAnExistingPreview(t *testing.T) {
 	}
 
 	body := get(f.handler(session(f.owner)), "/"+f.ready.ID).Body.String()
-	mustContain(t, body, `data-gif-ready`, `data-gif-img alt="" hidden`)
+	mustContain(t, body, `data-gif-ready`, `data-gif-img alt="GIF preview" hidden`)
 	assertNoInline(t, "clip with a preview", body)
 
 	anon := get(f.handler(passAuth{}), "/"+f.ready.ID).Body.String()
