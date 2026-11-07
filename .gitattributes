@@ -1,0 +1,23 @@
+# LF everywhere, always (Windows host, Linux containers). Commit #1 by design.
+* text=auto eol=lf
+*.sh text eol=lf
+*.go text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+Dockerfile text eol=lf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.mp4 binary
+*.webm binary
+*.woff binary
+*.woff2 binary
+# A TTF is a font too: web/static/fonts/spline-sans-mono.ttf is the face the poster label is
+# drawn with (DESIGN.md §20 erratum 287). `text=auto` would guess, and a guess that goes the
+# wrong way rewrites CRLF inside a binary table.
+*.ttf binary

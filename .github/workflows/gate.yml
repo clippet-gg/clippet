@@ -1,0 +1,50 @@
+# gate — the full suite (scripts/gate.sh: check.sh with -race, the whole E2E, the visual pass) on the gate's
+# own local stack, nightly and by hand. ADVISORY: never a required check. It builds the CPU image (GATE_GPU=0;
+# a hosted runner has no NVIDIA GPU) and, with no .env in the checkout, compares the gate stack's keys against
+# .env.example for information only (portable mode, scripts/lib/gatestack.sh). Two E2E bundles at a time
+# suit a 4-vCPU runner. The logs of every stage are uploaded whatever the verdict.
+name: gate
+
+on:
+  schedule:
+    - cron: "7 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gate
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: gate (cpu, advisory)
+    # The nightly runs once the repository is public (free standard runners); while it is private, by hand only.
+    # A schedule event's payload carries no `repository`, so the switch is the repository variable PUBLIC,
+    # set to true when the visibility flips.
+    if: github.event_name != 'schedule' || vars.PUBLIC == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: T2
+        shell: bash
+        env:
+          E2E_LANES: "2"
+          GATE_VISUAL: "1"
+          GATE_GPU: "0"
+          GATE_REF_ENV: .env.example
+          PII_STRICT: "1"
+        run: bash scripts/gate.sh
+      - name: Upload the gate's logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gate-logs-${{ github.run_id }}
+          path: .e2e/gate-*/
+          if-no-files-found: warn
+          retention-days: 14

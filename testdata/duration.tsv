@@ -1,0 +1,36 @@
+# duration.tsv — the ONE golden table for the two formatDuration renderers
+# (§20 erratum 268). internal/web/format.go renders the duration an owner reads
+# in the library and on the watch page; internal/notify/reply.go renders the
+# duration the Discord bot's follow-up carries, and the two are byte-identical
+# on purpose: "arc · 0:32" in a channel and "arc · 0:32" in the library are
+# meant to be the same fact, and a divergence between them would be silent.
+#
+# The copy exists because the two packages do not import each other — DESIGN §3's
+# import graph has no edge from the outbound-call package to the HTML renderer —
+# which is exactly the situation nit sweep S11 found in humanBytes, where three
+# copies had been left unpinned and one had drifted. So: one table, two tests
+# (internal/web's TestFormatDuration and internal/notify's), and a change to
+# either copy must match this file or edit it.
+#
+# Columns, tab-separated:
+#   ms      the input, in milliseconds
+#   text    what BOTH copies render
+#
+# The rounding rule this pins: seconds are rounded to NEAREST (the +500 before
+# the divide), not floored, so a 5,999 ms clip reads 0:06 rather than 0:05 —
+# and the hour branch appears only past an hour, so a short clip never carries
+# a "0:" nobody needed to read.
+0	0:00
+499	0:00
+500	0:01
+5999	0:06
+6000	0:06
+32000	0:32
+59500	1:00
+65400	1:05
+599000	9:59
+3599499	59:59
+3599500	1:00:00
+3600000	1:00:00
+3725499	1:02:05
+36000000	10:00:00

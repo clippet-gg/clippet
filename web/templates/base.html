@@ -1,0 +1,164 @@
+{{define "base"}}<!doctype html>
+{{- /*
+  data-badge is INSTANCE_BADGE (§20 erratum 285; web/STYLE.md): one lowercase
+  word an instance that is NOT the production one wears. It is rendered here,
+  beside data-theme and for the same reason -- the stylesheet's one
+  `:root[data-badge]` rule paints the wordmark's span grey instead of green with
+  the first byte of the page, so the mark never flashes production green on the
+  dev box and no script is involved. An unbadged instance renders no attribute
+  at all and is byte-identical to the page this app served before the variable
+  existed.
+*/}}
+<html lang="en"{{with .Theme}} data-theme="{{.}}"{{end}}{{with .Badge}} data-badge="{{.}}"{{end}}>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.DocTitle}}</title>
+{{- if .NoIndex}}
+<meta name="robots" content="noindex">
+{{- end}}
+{{- range .Meta}}
+{{- if eq .Attr "property"}}
+<meta property="{{.Key}}" content="{{.Content}}">
+{{- else}}
+<meta name="{{.Key}}" content="{{.Content}}">
+{{- end}}
+{{- end}}
+{{- /*
+  The share page's own Discord card, a "component embed" (§20 erratum 316,
+  CARD_COMPONENTS=on): a DATA block of a non-JavaScript type, which no browser
+  executes, so the CSP's script-src is not involved. Its body is JSON with every
+  `<`, `>` and `&` written as a JSON unicode escape (BuildComponentEmbed), so
+  nothing in it can close this element. The §9.1 tags above stay as they are:
+  they are the card Discord draws when it cannot draw this one.
+*/}}
+{{- with .ComponentEmbed}}
+<script id="discord:component-embed" type="application/vnd.discord.component-embed+json">{{.}}</script>
+{{- end}}
+{{- if .Canonical}}
+<link rel="canonical" href="{{.Canonical}}">
+{{- end}}
+{{- if .OEmbed}}
+<link rel="alternate" type="application/json+oembed" href="{{.OEmbed}}" title="{{.DocTitle}}">
+{{- end}}
+{{- /*
+  The favicon is the companion mark itself -- the striped clapper, the same unit
+  geometry docs/brand/mark.svg carries, at whatever size a client draws it --
+  bare, on the tab's own ground (the visual system "Kept", web/STYLE.md; §20
+  errata 103, 240, 301 and 306, which revoked the plain 16 px cut this line used
+  to carry; drawn by scripts/lib/mkicons.py, which check.sh diffs this line
+  against).
+  It is an inline SVG data: URI, so it costs no request
+  and, crucially, no OUTBOUND anything. It is percent-encoded in full --
+  including the `:` of the SVG namespace, which is why no literal scheme
+  appears here (check.sh's outbound-URL tripwire reads this file). The SVG
+  carries its own prefers-color-scheme rule, so the letters are ink on a light
+  tab strip and paper on a dark one. A `data:` image is already allowed by the
+  page CSP (`img-src 'self' data:`).
+  theme-color paints the mobile browser chrome the same --bg the stylesheet
+  paints the page: one tag per scheme when the browser decides, one tag when
+  the theme cookie has decided for it.
+
+  THEN, on a page that carries a card, ONE unqualified tag after all of them,
+  and its position is the whole mechanism (§20 erratum 287, MEASURED 2026-09-15
+  against a real channel, eight variants). Discord paints the bar down the left
+  edge of an unfurl from the LAST `theme-color` on the page and does not
+  evaluate `media` at all; a browser takes the FIRST candidate whose media
+  matches (HTML, "obtain a page's theme color") and therefore never reaches this
+  one. The two consumers read opposite ends of one list, so the phone's chrome
+  keeps the page's own ground in all three branches above -- including the two
+  cookie-pinned single-tag ones, whose tag is still first -- and the card gets
+  the clip's state: green ready, amber encoding, red failed. Every client is
+  served byte-identical HTML; nothing here looks at a User-Agent. A media-less
+  theme-color is the specification's own fallback for a consumer that cannot
+  evaluate media queries, and Discord is exactly such a consumer.
+
+  IT MUST STAY LAST. It is rendered HERE and not through {{range .Meta}} above,
+  because that loop runs near the top of <head>: a tag added to the §9.1
+  inventory would land FIRST, which would paint the phone chrome green and leave
+  Discord taking the pair's #191816 -- both halves broken at once.
+*/}}
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%22-104%20-306%201624%201624%22%3E%3Cstyle%3E.p%7Bfill%3A%2317181C%7D.s%7Bfill%3A%230E7C4F%7D%40media%28prefers-color-scheme%3Adark%29%7B.p%7Bfill%3A%23ECE9E2%7D.s%7Bfill%3A%234CD69A%7D%7D%3C%2Fstyle%3E%3Crect%20class%3D%22p%22%20x%3D%220%22%20y%3D%22230%22%20width%3D%22272%22%20height%3D%22570%22%2F%3E%3Cpath%20class%3D%22p%22%20d%3D%22M1146%2018L1418%205V800H1146Z%22%2F%3E%3Cpath%20class%3D%22p%22%20fill-rule%3D%22evenodd%22%20transform%3D%22rotate%28-9%200%20230%29%22%20d%3D%22M0%20230%20A230%20230%200%200%201%20230%200%20H1206%20A230%20230%200%200%201%201436%20230%20Z%20M378%20230%20L571%200%20L675%200%20L482%20230%20Z%20M638%20230%20L831%200%20L935%200%20L742%20230%20Z%20M898%20230%20L1091%200%20L1195%200%20L1002%20230%20Z%22%2F%3E%3Crect%20class%3D%22s%22%20x%3D%220%22%20y%3D%221000%22%20width%3D%221418%22%20height%3D%22200%22%20rx%3D%22100%22%2F%3E%3C%2Fsvg%3E">
+{{- if eq .Theme "dark"}}
+<meta name="theme-color" content="#191816">
+{{- else if eq .Theme "light"}}
+<meta name="theme-color" content="#ECEDEF">
+{{- else}}
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ECEDEF">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#191816">
+{{- end}}
+{{- with .CardColor}}
+<meta name="theme-color" content="{{.}}">
+{{- end}}
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="{{.CSS}}">
+<script src="{{.JS}}" defer></script>
+</head>
+<body{{with .BodyClass}} class="{{.}}"{{end}}{{with .Product}} data-product="{{.}}"{{end}}>
+{{- /*
+  The header. A session gets the wordmark and the nav. A page a stranger may
+  land on -- the share page, the collection page -- gets the wordmark ALONE
+  (page.Wordmark; §20 erratum 244, web/STYLE.md): the word `clippet`, live
+  text, the green span, linking to `/`, and nothing beside it. No nav, no
+  "sign up", no text. The embed carries it too, but as an overlay on the
+  player and not in this slot (§20 erratum 246).
+
+  The ONE thing that may stand beside the wordmark here is the instance badge
+  (§20 erratum 285): a word, not a tile and not an icon, and only on an instance
+  that is not the production one. A stranger's page carries it too -- a share
+  link handed out by the dev box is exactly where "which instance is this?"
+  needs answering -- and on the production instance it does not exist at all.
+
+  The LAST thing in the bar, on every page that has a bar, is the theme glyph
+  (§20 erratum 288: the owner asked for a light/dark glyph in the top
+  bar). It sits in `.bar-end` and not in the <nav>, because it
+  navigates nowhere and because a stranger's page has no nav to put it in: a
+  viewer watching somebody's clip at midnight is exactly the person who wants
+  the other theme, and a control that changes how THIS BROWSER paints is not the
+  "sign up" text erratum 244 kept out of this slot. The auth, front and message
+  pages have no bar by design (errata 244, 246) and so carry no glyph; Settings
+  keeps the three-way picker, which is the only place `System` can be chosen.
+*/}}
+{{- if or .Viewer .Wordmark}}
+<header class="top">
+  <a class="wordmark" href="/" aria-label="clippet">cli<span class="pp">pp</span>et</a>
+  {{- with .Badge}}
+  <span class="instance">{{.}}</span>
+  {{- end}}
+  <div class="bar-end">
+    {{- if .Viewer}}
+    <nav>
+      <a href="/">Library</a>
+      <a href="/settings">Settings</a>
+      <span class="who">{{.Viewer.Username}}</span>
+      <button type="button" class="linkish" data-logout>Log out</button>
+    </nav>
+    {{- end}}
+    {{- /*
+      ONE form, TWO buttons, and the stylesheet draws exactly one of them: the
+      sun when the page is painted dark, the moon when it is painted light. The
+      choice is made in CSS, in the same three states and the same order as the
+      token blocks (app.css) -- so the server never has to know what the
+      visitor's operating system prefers, and the right glyph is on the page
+      with its first byte, with no script and no flash. Each button NAMES THE
+      THEME IT GIVES YOU, which is what its aria-label and its tooltip say.
+      Without JavaScript this posts and comes back to `next`; with it, app.js
+      writes the attribute and the cookie in place and nothing navigates.
+      The SVGs carry no namespace attribute on purpose -- the HTML parser gives
+      an inline <svg> the SVG namespace itself, and no file under web/ may spell
+      a URL (scripts/check.sh).
+    */}}
+    <form class="theme-glyph" action="/settings/theme" method="post" data-theme-glyph>
+      <input type="hidden" name="next" value="{{.Path}}">
+      <button type="submit" class="glyph" name="theme" value="light" data-theme-to="light" aria-label="Light theme" title="Light theme"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="2.9"/><path d="M8 2V3.7M8 12.3V14M2 8H3.7M12.3 8H14M12.24 3.76L11.04 4.96M4.96 11.04L3.76 12.24M12.24 12.24L11.04 11.04M4.96 4.96L3.76 3.76"/></svg></button>
+      <button type="submit" class="glyph" name="theme" value="dark" data-theme-to="dark" aria-label="Dark theme" title="Dark theme"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M13.38 10.29A5.7 5.7 0 1 1 5.71 2.62A6.85 6.85 0 0 0 13.38 10.29Z"/></svg></button>
+    </form>
+  </div>
+</header>
+{{- end}}
+<main class="page">
+{{template "content" .}}
+</main>
+</body>
+</html>
+{{end}}

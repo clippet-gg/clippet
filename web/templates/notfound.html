@@ -1,0 +1,11 @@
+{{define "content"}}
+<section class="message">
+  {{- /* data-face: the mark arrives wearing a gasp and app.js plays it once (§20 erratum 274) */}}
+  {{- with .Badge}}<span class="lockup">{{end}}
+  <a class="wordmark display" href="/" aria-label="clippet" data-face="gasp">cli<span class="pp">pp</span>et</a>
+  {{- with .Badge}}<span class="instance">{{.}}</span></span>{{end}}
+  <h1>Not found</h1>
+  <p>This page does not exist, or the link has expired.</p>
+  <p class="alt"><a href="/">Library</a></p>
+</section>
+{{end}}

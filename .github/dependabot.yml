@@ -1,0 +1,36 @@
+# Dependabot: one grouped pull request per ecosystem per week, each tested by `t0` like any other change.
+#
+# docker: the Dockerfile's CPU bases are pinned as tag@sha256 (DEPLOY.md §17.1). Version updates are ignored,
+# so what arrives is a new DIGEST for the same tag (a rebuilt base with its security patches); a new Go,
+# Alpine or ffmpeg version stays a deliberate edit, because ffmpeg's in particular moves the transcode goldens.
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      go-modules:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+    groups:
+      base-images:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

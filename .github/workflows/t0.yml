@@ -1,0 +1,65 @@
+# t0 — the every-commit tier (scripts/t0.sh) on every push to main and every pull request.
+#
+# The ONE required check: a ruleset on main names this job, `t0`. It runs exactly what a contributor runs
+# locally: gofmt, go vet on the changed packages, every Go test (-tags ffmpeg, no -race) in the Dockerfile's
+# testdeps image, and check.sh's cheap stages beside it. Docker is on the runner; no Go toolchain is installed.
+#
+# Go's build cache survives between runs: t0.sh mounts the named volume `clippet-gobuild` as the container's
+# cache, so the volume is created here as a bind of a directory actions/cache restores and (on main only)
+# saves. A pull request reads main's cache and writes none of its own.
+name: t0
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: t0-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  t0:
+    name: t0
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Restore Go's build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/gobuild
+          key: t0-gobuild-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            t0-gobuild-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+            t0-gobuild-${{ runner.os }}-
+      - name: Mount the cache as the clippet-gobuild volume
+        shell: bash
+        run: |
+          set -eu
+          mkdir -p "$RUNNER_TEMP/gobuild"
+          docker volume create --driver local --opt type=none --opt o=bind --opt device="$RUNNER_TEMP/gobuild" clippet-gobuild >/dev/null
+          echo "Go's build cache: $(du -sh "$RUNNER_TEMP/gobuild" | cut -f1) restored"
+      - name: T0
+        shell: bash
+        env:
+          # A pull request vets the packages it changed against its base; a push to main vets them all.
+          T0_BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD' }}
+        run: bash scripts/t0.sh
+      - name: Hand the cache back to the runner user
+        if: always()
+        shell: bash
+        run: sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/gobuild"
+      - name: Save Go's build cache (main only)
+        if: success() && github.event_name == 'push'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/gobuild
+          key: t0-gobuild-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}

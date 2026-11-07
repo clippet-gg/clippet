@@ -1,0 +1,19 @@
+# compose.build.yaml — build the app from this checkout (the from-source overlay).
+#
+#   docker compose -f compose.yaml -f compose.build.yaml up -d --build
+#
+# Today compose.yaml still carries this same build block itself, so this file changes nothing yet; it
+# exists so the command above keeps working unchanged once that block goes.
+# When the first image is published, compose.yaml pulls it and loses its build block; this overlay is
+# then the one way to build from source.
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # The same two arguments compose.yaml passes (DESIGN.md §20 errata 104 and 303): the version and
+        # the commit baked into the binary, reported by /healthz and GET /api/instance.
+        VERSION: ${CLIPPET_VERSION:-dev}
+        COMMIT: ${CLIPPET_COMMIT:-}
+    image: ${CLIPPET_IMAGE:-clippet-app:local}

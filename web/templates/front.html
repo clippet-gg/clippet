@@ -1,0 +1,20 @@
+{{define "content"}}
+<!-- The front door (ROADMAP #36, §20 errata 246 and 264): what a stranger gets at `/`. The wordmark,
+     one line, a way in — and nothing else: no feature list, no screenshots, no marketing voice, no
+     repo or about link (deferred by the owner), no header slot (this page IS the front door). "Create
+     an account" appears only while registration is open, exactly as on the login page. The mark is a
+     span with role="img" here (no page to link to: this IS `/`), which is what makes its aria-label
+     authoritative — a bare span has no role that takes an author's name (web/STYLE.md). The line is
+     TWO sentences since erratum 264 (the owner's call: the homepage tagline does not need the closing
+     Discord clause) — where the link plays is the product's job, not the door's. -->
+<section class="auth front">
+  {{- with .Badge}}<span class="lockup">{{end}}
+  <span class="wordmark display" role="img" aria-label="clippet">cli<span class="pp">pp</span>et</span>
+  {{- with .Badge}}<span class="instance">{{.}}</span></span>{{end}}
+  <p class="line">Upload a clip. Get a link.</p>
+  <p class="enter"><a class="btn primary" href="/login">Log in</a></p>
+  {{- if .Open}}
+  <p class="alt"><a href="/register">Create an account</a></p>
+  {{- end}}
+</section>
+{{end}}

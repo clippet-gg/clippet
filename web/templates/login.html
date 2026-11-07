@@ -1,0 +1,49 @@
+{{define "content"}}
+<section class="auth">
+  {{- with .Badge}}<span class="lockup">{{end}}
+  <span class="wordmark display" role="img" aria-label="clippet">cli<span class="pp">pp</span>et</span>
+  {{- with .Badge}}<span class="instance">{{.}}</span></span>{{end}}
+  <form class="panel" data-auth="login" action="/api/auth/login" method="post">
+    <div class="panel-head"><h1>Log in</h1></div>
+    <input type="hidden" name="next" value="{{.Next}}">
+    <div class="row">
+      <span class="rl"><label for="a-user">Username</label></span>
+      <span class="rc"><input id="a-user" type="text" name="username" autocomplete="username" required></span>
+      <span class="rs"></span>
+    </div>
+    <div class="row">
+      <span class="rl"><label for="a-pass">Password</label></span>
+      <span class="rc"><input id="a-pass" type="password" name="password" autocomplete="current-password" required></span>
+      <span class="rs"></span>
+    </div>
+    <noscript><p class="hint">Logging in needs JavaScript in this browser.</p></noscript>
+    <div class="row">
+      <span class="rl"></span>
+      <span class="rc"><button type="submit" class="btn primary">Log in</button></span>
+      <span class="rs"></span>
+    </div>
+    <p class="error" data-error hidden></p>
+  </form>
+  {{- if .Notice}}
+  <p class="error" data-discord-notice>{{.Notice}}</p>
+  {{- end}}
+  {{- if .Discord}}
+  <!-- Sign in with Discord (ROADMAP #44, §20 erratum 302): a plain anchor, not a
+       form — CSP's form-action is enforced on a form's redirect chain — and an
+       ink hairline button with no brand colour and no icon (web/STYLE.md: one
+       solid button per screen, and that one is Log in). A Discord login opens
+       an account that is already LINKED; it never creates one. -->
+  <p class="alt"><a class="btn" href="{{.DiscordStart}}" data-discord-start>Sign in with Discord</a></p>
+  {{- end}}
+  {{- if .Open}}
+  <p class="alt"><a href="{{.AltURL}}">Create an account</a></p>
+  {{- else}}
+  <p class="alt" data-registration-closed>Accounts are made by whoever runs {{.Host}}.</p>
+  {{- end}}
+  {{- if .SignIn}}
+  <!-- The bot is the door (§20 erratum 341): `/signin` in the connected server
+       answers with a one-time link to this instance. -->
+  <p class="alt" data-signin-hint>Members of the connected server: /signin in Discord.</p>
+  {{- end}}
+</section>
+{{end}}

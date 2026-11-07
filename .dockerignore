@@ -1,0 +1,15 @@
+# Build context for ./Dockerfile (DESIGN.md §2). web/ and internal/db/migrations/
+# are embedded at build time and must NOT be listed here.
+.git
+.gitattributes
+.gitignore
+.editorconfig
+*.md
+scripts/
+testclips/
+data/
+scratch/
+.env
+.env.*
+.e2e/
+.worktrees/

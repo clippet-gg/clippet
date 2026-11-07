@@ -1,0 +1,28 @@
+{
+  "note": "TEST-ONLY keys: the shared seal vector (run 7 onepress, review item 8). Never a deployed key.",
+  "recipient_private": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "plNE2Ia8rjDui4bVlk8BlTX9noeJRykpIPSvjTQlwho",
+    "y": "iXmSUkvBeKr1U7AiWxnIGtw9N04shFh4oAVPFQ2kxrY",
+    "d": "J-Kk5fc5MEECqrnqw6Z16tij0S5jPG5X_-L46CrXiro"
+  },
+  "recipient_public": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "plNE2Ia8rjDui4bVlk8BlTX9noeJRykpIPSvjTQlwho",
+    "y": "iXmSUkvBeKr1U7AiWxnIGtw9N04shFh4oAVPFQ2kxrY"
+  },
+  "ephemeral_private": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "JHjEQxYY3nSlr7hk1mCqAfekqT4YaEkSRt0zkVXj3ko",
+    "y": "BmV6JHb5KljteReO0eY1bw39aMF8nDoMejJ8ypPqnHY",
+    "d": "uEGH4PMgoFuNbtw3mv0dbPLuH308aLGpYTvWDBMDxzE"
+  },
+  "iv": "ZtSmduA7ls4dHQa3",
+  "guild": "900000000000000001",
+  "host": "clips.example.org",
+  "plaintext": "https://clips.example.org/in/auto/ca_Ab9-_Ab9-_Ab9-_Ab9-_Ab9-_Ab9-_Ab9-_Ab9-_xyz",
+  "blob": "AQQkeMRDFhjedKWvuGTWYKoB96SpPhhoSRJG3TORVePeSgZleiR2-SpY7XkXjtHmNW8N_WjBfJw6DHoyfMqT6px2ZtSmduA7ls4dHQa3LlRz3TwQH6z9of9CEOoGmrLY4jkr8qskxf8gFBWX6q36L2M1XjQvZD4mKPsAloy-0Z6YTTSAFVMTWTCmsw_CevLHJk3lDCXgjlWtgRhzZRPU-CKUBy1G8DUdRYvjMDxr"
+}

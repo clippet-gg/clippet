@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-491 -713 2400 2400">
+  <!-- clippet, the companion mark: the striped clapper (docs/brand/README.md). Font units of the
+       wordmark, 2000 per em: stems 272 at pitch 1146, the lid 230 thick turned 9 degrees at the left
+       hinge with three cuts as holes in its own path, the span 1418 x 200 one gap of 200 under the stems. -->
+  <rect fill="currentColor" x="0" y="230" width="272" height="570"/>
+  <path fill="currentColor" d="M1146 18L1418 5V800H1146Z"/>
+  <path fill="currentColor" fill-rule="evenodd" transform="rotate(-9 0 230)" d="M0 230 A230 230 0 0 1 230 0 H1206 A230 230 0 0 1 1436 230 Z M378 230 L571 0 L675 0 L482 230 Z M638 230 L831 0 L935 0 L742 230 Z M898 230 L1091 0 L1195 0 L1002 230 Z"/>
+  <rect fill="#4CD69A" x="0" y="1000" width="1418" height="200" rx="100"/>
+</svg>

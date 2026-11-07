@@ -1,0 +1,22 @@
+-- 0015_link_style.sql — the account's default link grammar (ROADMAP #35).
+--
+-- One defaulted column on `users` and nothing else, exactly as 0011 added the
+-- other two upload defaults: no index (a default is only ever read through a
+-- user already in hand), no CHECK, no backfill. ALTER TABLE ... ADD COLUMN is
+-- O(1) in SQLite and the value every existing row gets is the grammar every
+-- existing clip already has, so an installation running on 0001-0014 upgrades
+-- by applying this file and nothing more.
+--
+-- Unlike `default_ttl_days` this column has only TWO states and therefore no
+-- NULL: `compact` is both the instance default and the shipped one, there is
+-- no third "follow the instance" meaning to express, and a NOT NULL DEFAULT
+-- keeps every reader — including a hand-written query — from having to know
+-- what a missing value would have meant. The closed set (`compact`,
+-- `memorable`) is enforced by the handler, which is where §8.2's other closed
+-- sets are enforced; a value some other tool wrote is read back as `compact`
+-- rather than failing an upload over somebody's SQL (internal/db/defaults.go).
+--
+-- Nothing here changes an existing link. The grammar is decided at MINT time
+-- and read back off the id itself (ids.Kind), so there is no column on `clips`
+-- and no clip anywhere is rewritten (§20 errata 249, 250).
+ALTER TABLE users ADD COLUMN default_link_style TEXT NOT NULL DEFAULT 'compact';  -- 'compact' | 'memorable'

@@ -1,0 +1,17 @@
+# scripts/e2e.d/GO-ONLY — product files no E2E bundle proves, each with the Go test(s) that do:
+#   <glob> <TestName>[ <TestName>…]
+# scripts/select.sh selects NO bundle for a change to one of these (the Go pass of T0/T1 is its proof).
+# The E2E self-test refuses a row whose glob matches no product file and a test name that does not exist.
+# Two tokens stand in for a test where a file is never run on this box, and say so instead of naming a
+# test that does not touch it:
+#   @cross-compile  built only for windows/amd64 — scripts/check.sh's Go stage compiles it; no test runs it
+#   @not-built      built for no target this project ships (the `!unix && !windows` fallback); vet sees
+#                   nothing of it either — the line is here so the coverage rule does not hide the fact
+internal/store/fake.go TestFakePutGetStatListDelete TestFakeFailNext TestFakeConcurrentSafe
+cmd/clippet/freebytes_windows.go @cross-compile
+internal/worker/freebytes_windows.go @cross-compile
+internal/store/fs_sync_windows.go @cross-compile
+cmd/clippet/datalock_windows.go @cross-compile
+cmd/clippet/freebytes_other.go @not-built
+internal/worker/freebytes_other.go @not-built
+cmd/clippet/datalock_other.go @not-built

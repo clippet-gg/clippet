@@ -1,0 +1,23 @@
+# compose.gpu.yaml — the GPU flavour as an OVERRIDE of the one `app` service
+# (DESIGN.md §20 erratum 247, DEPLOY.md §27). Select it once, in `.env`:
+#
+#   COMPOSE_FILE=compose.yaml:compose.gpu.yaml
+#   TRANSCODE_HWACCEL=cuda
+#
+# and every `docker compose up -d --build`, `exec app`, `logs app` from then on
+# is the GPU build — the service keeps its name, its port, its volumes and its
+# healthcheck, so nothing else (the E2E's own `up`, the operator's habits, the
+# upgrade checklist in DEPLOY §16) has to know which flavour runs. Without the
+# line an operator without a card never resolves this file, never pulls the
+# CUDA bases and never asks the daemon for a device.
+#
+# Three keys change: the Dockerfile target, the tag, and the device grant.
+# `gpus: all` is the Compose v2 device shorthand; the Swarm-only
+# `deploy.resources` block is not used for the reason `compose.yaml` records
+# beside `cpus`.
+services:
+  app:
+    build:
+      target: gpu
+    image: ${CLIPPET_GPU_IMAGE:-clippet-app:gpu}
+    gpus: all

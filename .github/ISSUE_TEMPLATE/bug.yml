@@ -1,0 +1,37 @@
+name: Bug
+description: Something a running instance does wrong.
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The tag you run, from `/healthz` or `git describe --tags`.
+      placeholder: v2026.11.03
+    validations:
+      required: true
+  - type: dropdown
+    id: store
+    attributes:
+      label: Store
+      options:
+        - A folder or a NAS (STORAGE_BACKEND=fs)
+        - Cloudflare R2
+        - Backblaze B2
+        - Amazon S3
+        - Another S3-compatible server
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: What you did, and what happened instead
+      description: The steps, then the result you saw and the one you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log lines
+      description: From `docker compose logs app`, with any token, key or address removed.
+      render: text

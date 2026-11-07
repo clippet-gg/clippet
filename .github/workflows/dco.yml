@@ -1,0 +1,44 @@
+# dco — every commit a pull request adds carries a `Signed-off-by:` line (the Developer Certificate of Origin;
+# CONTRIBUTING.md says how: `git commit -s`). Merge commits are not checked. The maintainer's direct pushes to
+# main are exempt by event: this runs on pull requests only.
+name: dco
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dco:
+    name: dco
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Every commit is signed off
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -eu
+          n=0; bad=0
+          for c in $(git rev-list --no-merges "$BASE_SHA..$HEAD_SHA"); do
+            n=$((n + 1))
+            if git show -s --format=%B "$c" | grep -Eq '^Signed-off-by: .+ <[^>]+>[[:space:]]*$'; then
+              continue
+            fi
+            bad=$((bad + 1))
+            echo "::error title=dco::commit $(git rev-parse --short=12 "$c") has no Signed-off-by line"
+            git show -s --format='  %s' "$c"
+          done
+          if [ "$bad" -gt 0 ]; then
+            echo "$bad of $n commit(s) are not signed off. Amend each with 'git commit --amend -s' (or 'git rebase --signoff $BASE_SHA') and push again."
+            exit 1
+          fi
+          echo "dco: all $n commit(s) are signed off"

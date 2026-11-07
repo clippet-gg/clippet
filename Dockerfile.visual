@@ -1,0 +1,24 @@
+# Dockerfile.visual — the browser the visual pass runs in (scripts/visual.sh; web/STYLE.md;
+# DESIGN.md §20 erratum 240). NOT part of the product image: `Dockerfile` builds the app and this
+# builds the tool that photographs it, which is why they are separate files and separate tags.
+#
+# It exists to move ONE outbound fetch out of the run. The pass used to mount a named volume
+# (clippet-pwmods) and `npm install playwright@<pin>` into it on the first run of a fresh machine —
+# the only request scripts/visual.sh made to anything but the stack under test. Baking it makes the
+# fetch a BUILD step: cached by the daemon, keyed to the tag, and gone from every run after the first.
+#
+# scripts/visual.sh builds it with an EMPTY context (`docker build - < Dockerfile.visual`), so nothing
+# from this repository is copied in and the build reads no .dockerignore: the image is the official
+# Playwright base plus its matching npm package, and the harness itself is bind-mounted at run time.
+#
+# ONE VERSION, in one place: scripts/visual.sh's PW_VERSION is passed in as a build argument and names
+# both the base image tag and the package. The two must match — Playwright's node package drives the
+# browsers that the image ships — so they are never written down separately.
+ARG PW_VERSION=1.48.0
+FROM mcr.microsoft.com/playwright:v${PW_VERSION}-noble
+ARG PW_VERSION
+WORKDIR /pw
+RUN npm install --silent --no-audit --no-fund --no-package-lock "playwright@${PW_VERSION}"
+# The pass runs `node /src/scripts/lib/visual.js` with the sources bind-mounted read-only at /src;
+# NODE_PATH is what lets that file `require("playwright")` from here.
+ENV NODE_PATH=/pw/node_modules

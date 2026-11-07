@@ -1,0 +1,106 @@
+# compose.fs.yaml — the folder flavour: a directory instead of a bucket (ROADMAP
+# #37, DESIGN.md §20 errata 276 and 345, DEPLOY.md §32).
+#
+# SINCE ERRATUM 345 THIS IS ALSO WHAT `compose.yaml` DOES ON ITS OWN. The default
+# stack is the app alone writing to a folder, so selecting this file changes
+# nothing about a fresh stack, and it stays for three reasons: every `.env` that
+# already says
+#
+#   COMPOSE_FILE=compose.yaml:compose.fs.yaml
+#
+# keeps working unchanged; the /setup wizard's folder block assigns that line
+# (a block ASSIGNS COMPOSE_FILE rather than relying on a line being absent,
+# erratum 298); and it PINS the folder shape, where compose.yaml only defaults
+# to it. Below, STORAGE_BACKEND and STORAGE_DIR are hard-set, and the four S3_*
+# that name a bucket are passed through EMPTY, so a leftover bucket line in
+# `.env` cannot reach the app on this flavour: with no bucket configured
+# anywhere, the binary's only possible outbound destinations are Discord's, and
+# none at all when the webhook and the bot are unset (§15, DEPLOY §32).
+#
+# The service keeps its name, its port, its volumes and its healthcheck (the
+# same override shape `compose.gpu.yaml` uses, erratum 247), so the E2E's own
+# `up`, the operator's habits and §16's upgrade checklist never have to know
+# which flavour is running.
+#
+# STORAGE_DIR_HOST has a DESKTOP DEFAULT (ROADMAP #42 (a), §20 erratum 295). A
+# server sets it -- `/srv/clippet-media`, a NAS mount -- and always did; what it
+# used to do without it was refuse to resolve, which is the wrong answer on the
+# machine somebody is trying this on for the first time. The default is the
+# person's own Videos folder, because that is where a capture tool already
+# writes and because the store keeps its objects under `clips/` beside its
+# marker, so the folder's ROOT stays theirs (and is what the drop folder of
+# §34 reads).
+#
+# Compose interpolation cannot expand `~`, so it is spelled from the variables
+# a shell already exports, in this order:
+#
+#   ${STORAGE_DIR_HOST:-${HOME:-${USERPROFILE}}/Videos/clippet}
+#
+#   - STORAGE_DIR_HOST, when the operator set one: nothing about a server
+#     changes.
+#   - HOME, which macOS, Linux and Git Bash all export. On Git Bash it reaches
+#     docker.exe as a WINDOWS path (MSYS converts a path-shaped variable for a
+#     native child), so `%USERPROFILE%/Videos/clippet` is what both shells
+#     resolve to on Windows and the daemon takes the mixed separators happily.
+#   - USERPROFILE, which is what PowerShell and cmd have and HOME is not set in.
+#
+# THE SPELLING THAT DOES NOT WORK, measured here rather than assumed: a nested
+# `:?` guard. `${STORAGE_DIR_HOST:-${HOME:-${USERPROFILE:?set STORAGE_DIR_HOST
+# ...}}/Videos/clippet}` reads like the right answer -- refuse when the machine
+# has no home directory at all rather than bind something nobody meant -- and
+# Compose v2.40.3 evaluates that `:?` EAGERLY: it fires whenever USERPROFILE is
+# unset, even when HOME supplied the value and the branch was never taken, and
+# even when STORAGE_DIR_HOST is set in `.env`. Measured on this box in both
+# shells, three ways round (`scripts/fsdefault.sh` is the record). USERPROFILE
+# is never set on Linux or macOS, so that spelling would have refused to resolve
+# on every server this file has ever run on. `:-` nests correctly; `:?` does
+# not nest at all.
+#
+# What that costs, and where it is caught: with NEITHER variable exported --- a
+# scheduler, a service account, `env -i` --- the default resolves to
+# `/Videos/clippet`, a path at the root of the host's filesystem. No compose
+# expression can refuse that without refusing every Linux box as well, so the
+# APP catches it instead: `admin doctor`'s `store` row WARNs, naming both
+# variables and the fix, exactly when the default supplied the path AND what it
+# supplied is `/Videos/clippet`. Set STORAGE_DIR_HOST explicitly in any
+# environment you did not log in to.
+#
+# One more quirk, a Git Bash one rather than a compose one: an EXPORTED
+# `STORAGE_DIR_HOST=/srv/clippet-media` is rewritten by MSYS into
+# `C:/Program Files/Git/srv/clippet-media` before docker sees it, exactly as
+# DEPLOY §32.3's `MSYS_NO_PATHCONV` note describes for the migrate commands. A
+# `.env` line is read by compose itself and is never touched, which is where
+# this value belongs anyway.
+#
+# The bind source is SPELLED TWICE below -- once as the mount and once as an
+# environment row -- and it has to be: the container knows only `/media`, and
+# `admin doctor`'s `store` row is where an operator finds out which directory on
+# their own disk that is and which variable supplied it. The second row,
+# STORAGE_DIR_HOST_SET, is the one bit the resolved path cannot carry: whether
+# the operator named it or the default did. Neither is ever joined into a path
+# by the app; they are reported and nothing else.
+#
+# STORAGE_DIR is /media and not /data/media on purpose: DATA_DIR is /data, and
+# the media store may not sit inside it (a boot error). They are two places —
+# the small precious one and the large replaceable-only-from-a-backup one — and
+# DEPLOY §32's backup section is about telling them apart.
+services:
+  app:
+    volumes:
+      - "${STORAGE_DIR_HOST:-${HOME:-${USERPROFILE}}/Videos/clippet}:/media"
+    environment:
+      STORAGE_BACKEND: fs
+      STORAGE_DIR: /media
+      # Informational only, for `admin doctor`'s `store` row: the HOST side of
+      # the bind above, and whether the operator named it. The app never joins
+      # a path from either (STORAGE_DIR is the only path it uses), and both are
+      # empty on the bucket flavour, where there is no bind at all.
+      STORAGE_DIR_HOST: "${STORAGE_DIR_HOST:-${HOME:-${USERPROFILE}}/Videos/clippet}"
+      STORAGE_DIR_HOST_SET: "${STORAGE_DIR_HOST:+1}"
+      # EMPTY, not absent: a bucket line left in `.env` would otherwise reach the
+      # app through compose.yaml, and on `fs` any one of them is a boot error
+      # naming itself.
+      S3_ENDPOINT: ""
+      S3_BUCKET: ""
+      S3_ACCESS_KEY: ""
+      S3_SECRET_KEY: ""

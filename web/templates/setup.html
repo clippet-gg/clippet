@@ -1,0 +1,190 @@
+{{define "content"}}
+{{- /*
+  /setup — the first-run wizard (ROADMAP #45, DESIGN.md §20 errata 297-299,
+  309-311, DEPLOY.md §35). A numbered walk down the page: the facts (`Now`,
+  unnumbered: not a step), then `1 · Pick a storage backend` (five radio
+  cards and the Reached seg), `2 · <the backend's name>` (the walk: the STOP
+  callout first when it applies, the one <ol> in the product, the block) and
+  `3 · Apply`. Before a pick steps 2 and 3 render as
+  their muted, dashed heads alone, so the route is visible before the first
+  step and nothing below the pick pretends to be ready (erratum 311).
+
+  Three rules this file is held to. NO URL, anywhere, comments included:
+  check.sh's tripwire greps https?:// over every template, and every endpoint
+  here is one of internal/web/setup.go's two placeholder grammars. NO
+  arithmetic and NO comparison: every string is decided in pages.go, the way
+  the Storage panel's are. And nothing here is a call to action — the page is
+  reached from Settings and from the docs, never advertised from a watch page
+  or the front door.
+
+  Labels are nouns; a verdict is a state word; a rule is said once, when it
+  bites (erratum 309). No pick is refused (erratum 348 (b) withdrew erratum
+  299's Cloudflare refusal): the folder behind a tunnel walks, and its risk is
+  the walk's closing line. The STOP is a callout
+  whose bold lead is the fact, first thing in step 2, never a row and never a
+  state word (erratum 311).
+*/}}
+{{- if .OwnerOnly}}
+{{- /* A signed-in account that is not this instance's owner (§20 erratum 349): the heading and one
+       sentence, nothing the page would have read. No `data-setup`: app.js wires nothing here. */}}
+<section class="settings setup" data-setup-owner-only>
+  <h1>Where do clips live?</h1>
+  <div class="panel"><p class="hint pad">{{.OwnerOnly}}</p></div>
+</section>
+{{- else if .StepsOnly}}
+{{- /* The steps-only view, `?view=steps&store=<id>` (§20 erratum 335): the
+       walk's head, its caveat, the numbered steps with their dated hints and
+       `labels read`, and nothing else — no chooser, no Now, no STOP, no
+       block, no command, no Check now. The desktop app's
+       `R2 steps` and its siblings open it. No `data-setup`: app.js wires
+       nothing here. */}}
+<section class="settings setup" data-setup-steps="{{.Walk.ID}}">
+  <div class="panel" id="walk" data-setup-walk="{{.Walk.ID}}">
+    <div class="panel-head"><h2>{{.Walk.Head}}</h2>{{with .Walk.Caveat}}<span class="hint">{{.}}</span>{{end}}</div>
+    <div class="walk-body">
+      <ol class="walk">
+        {{- range .Walk.Steps}}
+        <li>{{.Text}}{{with .Hint}}<span class="hint">{{.}}</span>{{end}}</li>
+        {{- end}}
+      </ol>
+      <div class="walk-meta"><span class="rs">labels read {{$.WalksRead}}</span></div>
+    </div>
+  </div>
+</section>
+{{- else}}
+<section class="settings setup" data-setup data-setup-backend="{{.BackendID}}">
+  <h1>Where do clips live?</h1>
+
+  <div class="panel" id="now">
+    <div class="panel-head"><h2>Now</h2></div>
+    <div class="row">
+      <span class="rl">backend</span>
+      <span class="rc">{{.BackendWord}}</span>
+      <span class="rs"></span>
+    </div>
+    <div class="row">
+      <span class="rl">where</span>
+      <span class="rc">{{.Where}}</span>
+      <span class="rs"></span>
+    </div>
+    <div class="row">
+      <span class="rl">clips</span>
+      <span class="rc">{{.Clips}}</span>
+      <span class="rs"></span>
+    </div>
+    <div class="row">
+      <span class="rl">last check</span>
+      <span class="rc">{{if .Checked}}{{.Checked}}{{else}}not yet{{end}}</span>
+      <span class="rs" data-setup-state>{{.StoreState}}</span>
+    </div>
+    {{- with .PerTenGB}}
+    <div class="row">
+      <span class="rl">10 GB is</span>
+      <span class="rc">{{.}}</span>
+      <span class="rs"></span>
+    </div>
+    {{- end}}
+  </div>
+
+  {{- /* The chooser. A form GET, so it works with JavaScript off (the shape
+         erratum 242 set); app.js hides the Show row and submits on change of
+         either control. Two controls, because the answer turns on both:
+         classify the thing first. Five radio cards, each its name, its one
+         fact and its verdict in the state cell (`on now`); the
+         Reached control is a seg of three radios, so the form posts `store`
+         and `via` like any other fields. */}}
+  <form class="panel" id="choose" method="get" action="/setup" data-setup-form>
+    <div class="panel-head"><h2><span class="n">1</span> Pick a storage backend</h2></div>
+    <div class="choices" data-setup-store>
+      {{- range .Options}}
+      <label class="choice"><input type="radio" name="store" value="{{.Value}}"{{if .Selected}} checked{{end}}><span class="dot"></span><span class="name">{{.Label}}</span><span class="rs">{{.State}}</span></label>
+      {{- end}}
+    </div>
+    <div class="row top">
+      <span class="rl">Reached</span>
+      <span class="rc">
+        <span class="seg" role="radiogroup" aria-label="Reached" data-setup-via>
+          {{- range .Exposures}}
+          <label class="seg-opt"><input type="radio" name="via" value="{{.Value}}"{{if .Selected}} checked{{end}}><span>{{.Label}}</span></label>
+          {{- end}}
+        </span>
+      </span>
+      <span class="rs">{{if .Guessed}}guessed{{end}}</span>
+    </div>
+    <div class="row">
+      <span class="rl"></span>
+      <span class="rc"><button type="submit" class="btn" data-setup-show>Show</button></span>
+      <span class="rs"></span>
+    </div>
+  </form>
+
+  {{- if .Unknown}}
+  <p class="notice" data-setup-unknown>That is not one of the five. Pick one above.</p>
+  {{- end}}
+
+  {{- with .Walk}}
+  <div class="panel" id="walk" data-setup-walk="{{.ID}}">
+    <div class="panel-head"><h2><span class="n">2</span> {{.Head}}</h2>{{with .Caveat}}<span class="hint">{{.}}</span>{{end}}</div>
+    <div class="walk-body">
+      {{- /* The STOP (§20 errata 297, 311): a fact about this instance, first.
+             Its bold lead is the fact; it names the verb in <code> and the
+             section, prints no command, offers no button and blocks nothing:
+             it is a STOP, not a gate. */}}
+      {{- with .Stop}}
+      <div class="callout" data-setup-stop><b>{{.Lead}}</b> {{.Before}}<code>admin storage migrate</code>{{.After}}</div>
+      {{- end}}
+      <ol class="walk">
+        {{- range .Steps}}
+        <li>{{.Text}}{{with .Hint}}<span class="hint">{{.}}</span>{{end}}</li>
+        {{- end}}
+      </ol>
+      <div class="walk-meta"><span class="rs">labels read {{$.WalksRead}}</span></div>
+      <div class="env-head"><span class="rl">your .env</span><button type="button" class="btn small" data-setup-copy>Copy</button></div>
+      <pre class="env mono" data-setup-block>{{.Block}}</pre>
+      {{- range .Hints}}
+      <p class="hint">{{.}}</p>
+      {{- end}}
+    </div>
+  </div>
+
+  <div class="panel" id="apply">
+    <div class="panel-head"><h2><span class="n">3</span> Apply</h2></div>
+    <div class="row">
+      <span class="rl">preflight</span>
+      <span class="rc"><code class="mono" data-setup-cmd>docker compose run --rm --no-deps app admin doctor</code></span>
+      <span class="rs"><button type="button" class="btn small" data-setup-copy>Copy</button></span>
+    </div>
+    <div class="row">
+      <span class="rl">rebuild</span>
+      <span class="rc"><code class="mono" data-setup-cmd>docker compose up -d --build</code></span>
+      <span class="rs"><button type="button" class="btn small" data-setup-copy>Copy</button></span>
+    </div>
+    <div class="row">
+      <span class="rl">services</span>
+      <span class="rc"><code class="mono" data-setup-cmd>docker compose ps</code></span>
+      <span class="rs">{{.Services}}</span>
+    </div>
+    <div class="row top">
+      <span class="rl">check now</span>
+      <span class="rc">
+        {{if $.Signed}}<button type="button" class="btn" data-setup-check>Check now</button>{{else}}sign in to check{{end}}
+        <span class="hint">Writes one small object to the backend in use and removes it.</span>
+      </span>
+      <span class="rs" data-setup-check-state>{{if $.Signed}}{{$.StoreState}}{{else}}sign in first{{end}}</span>
+    </div>
+    <noscript><p class="hint">Check now needs JavaScript. admin doctor above is the same check.</p></noscript>
+    <p class="error" data-setup-error hidden></p>
+  </div>
+  {{- else}}
+  {{- /* Not reached yet: the two heads alone, muted and dashed, so the whole
+         route is visible before the first pick (erratum 311). */}}
+  <div class="panel later" id="walk-later" data-setup-later>
+    <div class="panel-head"><h2><span class="n">2</span> Set up</h2></div>
+  </div>
+  <div class="panel later" id="apply-later" data-setup-later>
+    <div class="panel-head"><h2><span class="n">3</span> Apply</h2></div>
+  </div>
+  {{- end}}
+</section>
+{{- end}}
+{{end}}

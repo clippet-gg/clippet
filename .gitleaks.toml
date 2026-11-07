@@ -1,0 +1,26 @@
+# gitleaks configuration: the default rules, plus the fixtures and placeholders this tree carries on
+# purpose (no real credential matches any of these). Run:
+#   docker run --rm -v "$PWD":/repo:ro zricethezav/gitleaks:v8.21.2 dir /repo --redact --config /repo/.gitleaks.toml
+title = "clippet"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "planted test fixtures and documented placeholders"
+regexes = [
+  '''ck_notarealtoken''',
+  '''ck_EXAMPLE[A-Z]+''',
+  '''AKIAPLANTED''',
+  '''GhIjKl''',
+  '''itroot''',
+  '''123456789012345678''',
+  '''c\.S3\.KeyPrefix''',
+]
+paths = [
+  '''internal/store/minio_integration_test\.go''',
+  '''scripts/e2e\.d/.*\.sh''',
+  '''.*_test\.go''',
+  '''API\.md''',
+  '''\.env\.example''',
+]

@@ -1,0 +1,58 @@
+# compose.pass.yaml — a Clippet Pass name as one added service (DEPLOY.md §36, DESIGN.md §20
+# erratum 303). A Pass is optional and paid, and is sold by the maintainer: this instance is
+# complete, public and free without it. Nothing in the app changes when this file is selected — the app never talks
+# to this container and has no idea it is there.
+#
+# Select it in `.env` once the portal has given you a token. The lines — the release first, the file
+# list, the name's own and the token — are DEPLOY.md §36.2's, and the `/setup` wizard prints the whole
+# block for whichever store you are on; this header deliberately does not copy them, so there is one
+# list to keep right. Two of them are the APP's own and must be right from the FIRST boot on the name:
+# PUBLIC_BASE_URL is what every card tag and every share link is built from, and the `__Host-` cookie
+# prefix of SESSION_COOKIE_NAME is refused on a plain-http base.
+#
+# A FOLDER WORKS; A BUCKET WITH MEDIA_DELIVERY=redirect TAKES THE RISK AWAY. A Pass name is a
+# Cloudflare tunnel, and Cloudflare's Service-Specific Terms restrict serving video through a proxied
+# hostname from an origin that is not theirs (DEPLOY.md §33, §35.5). The wizard names that risk on the
+# folder's walk and never refuses it (DESIGN.md §20 erratum 348, which withdrew erratum 299's refusal),
+# and the Pass does not enforce it (verification-plane amendment 17): the risk is the operator's.
+#
+# Selecting this file without the token is a loud compose error, not a sidecar that quietly never
+# attaches. What the token buys is that you never hold a Cloudflare credential: this container
+# exchanges it for whatever the current substrate needs and runs the connector itself, and a leaked
+# token is revoked in the portal without touching a tunnel.
+#
+# The tag is PINNED to the sidecar's own major, `:1`, and the sidecar's release rule is what moves
+# it; `scripts/check.sh` refuses a moving `latest` tag in any
+# compose file here, for the reason §20 erratum 292 records — a moving tag on the one process every
+# viewer's bytes cross is an unreviewed upgrade on every `docker compose up -d`. The sidecar image is
+# published by the maintainer at the tag the portal names; the portal's own instructions are what to
+# trust if this line and they disagree.
+#
+# CLIPPET_PASS_TOKEN is NOT an app variable and reaches no `internal/config` reader — it belongs to
+# this container alone, exactly as CLOUDFLARE_TUNNEL_TOKEN belongs to the tunnel's. That is why it
+# is absent from compose.yaml's `app` environment block and why check.sh's config-name parity stage
+# has nothing to say about it.
+#
+# What `docker compose logs -f edge` should show, in order: `{"event":"attach","outcome":"ok",…}`
+# then `{"event":"child_start","outcome":"ok",…}`. A `no_state` line after the `ok` means the tunnel
+# is up but the credential is not being cached — fix the volume, nothing else. `bad_token` every few
+# seconds means the `.env` line; fix it and `docker compose restart edge`. DEPLOY.md §36 has the
+# whole page.
+services:
+  edge:
+    image: ghcr.io/clippet-gg/clippet-pass-edge:1
+    restart: unless-stopped
+    environment:
+      CLIPPET_PASS_TOKEN: ${CLIPPET_PASS_TOKEN:?set CLIPPET_PASS_TOKEN in .env (paste the token from your Clippet portal)}
+    # A NAMED volume, not a bind: the image ships /state owned by the uid it runs as, and an empty
+    # named volume inherits that owner and mode. A bind mount of a host directory root owns does
+    # not, and the sidecar then logs `no_state` after every successful attach — a box that comes
+    # back dark from its next restart during an outage.
+    volumes: [pass_state:/state]
+    depends_on:
+      app: { condition: service_healthy }
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+volumes:
+  pass_state:

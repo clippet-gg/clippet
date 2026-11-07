@@ -1,0 +1,8 @@
+{
+ "note": "TEST-ONLY: sealed by clippet-pass forward/src/claim/seal.ts seal() (a fresh ephemeral key and IV) to the shared vector's TEST recipient; never a deployed key.",
+ "sealed_by": "forward/src/claim/seal.ts seal()",
+ "guild": "1419000000000000002",
+ "host": "name.example.test",
+ "plaintext": "https://name.example.test/in/auto/ca_Zz9-_Zz9-_Zz9-_Zz9-_Zz9-_Zz9-_Zz9-_Zz9-_q1w",
+ "blob": "AQQ18TJbMH9ZBXMFeJUixoVrtAri2MrrMIwzUv9MINrTzwt8yYu7xsOVWvzBXtOTN3Wuzkw1nzSG2eKriNJ-c0OUt_SIE0GDcOtesh6jQ0LQ3FP_q6QHewv-zFXQ3a8yX2izLPk8uscXO3AB6hMiRrkoGK9dAVpoW6bW11K6sY5sJMW_Wn_miqO5S7SbnjO12GjRBT-dXPXvj6mQXkcfXSQHWfrSdZNb2dFA9Csg"
+}

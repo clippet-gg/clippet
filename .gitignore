@@ -1,0 +1,56 @@
+# secrets / local config
+.env
+.env.*
+!.env.example
+
+# runtime data (bind mounts, scratch)
+/data/
+/scratch/
+/tmp/
+
+# generated test media
+/testclips/
+*.log
+
+# editor/OS noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# python bytecode (nit sweep S23): scripts/lib/*.py are run as scripts by
+# check.sh, which creates none — but both are importable, and one `import
+# mkicons` from a probe or a future test writes scripts/lib/__pycache__/
+__pycache__/
+*.pyc
+
+# E2E scratch (cookie jar, downloads) and build worktrees
+/.e2e/
+/.worktrees/
+
+# operator backups (DEPLOY.md §15 writes database snapshots and bucket mirrors
+# here) — a snapshot holds every user, session and API token: never commit one
+/backups/
+
+# local Claude Code settings dir (per-account; not part of the product)
+/.claude/
+
+# never tracked: credentials, keys and local tool files
+# a secrets folder (signing material, tokens) at any depth
+.secrets/
+# a PKCS#12 bundle (a signing certificate with its key)
+*.p12
+# an Apple API key
+*.p8
+# a PEM certificate or private key
+*.pem
+# a private key
+*.key
+# a Windows signing certificate with its key
+*.pfx
+# Node dependencies, wherever a tool installs them
+node_modules/
+# a maintainer's private notes for Claude Code
+CLAUDE.local.md
+# a local MCP server list (per machine)
+.mcp.json

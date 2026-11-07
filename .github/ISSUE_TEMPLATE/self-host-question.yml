@@ -1,0 +1,31 @@
+name: Self-hosting problem
+description: An instance that will not start, go public, or reach its store.
+labels: [self-host]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        `DEPLOY.md` covers most of this; `clippet admin doctor` names every configuration mistake at once.
+        A question that is not a problem belongs in Discussions.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: v2026.11.03
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: What `admin doctor` says
+      description: Run `docker compose run --rm --no-deps app admin doctor`; it prints no secret.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: How the instance is reached
+      description: Loopback, a tunnel, a reverse proxy, or a published port; and the store you chose.
+    validations:
+      required: true

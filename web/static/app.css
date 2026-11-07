@@ -1,0 +1,807 @@
+/* ============================================================================
+   Clippet — the one stylesheet (DESIGN.md §9: CSP style-src 'self', no inline
+   styles anywhere). The visual system is "Kept" — web/STYLE.md is the page-long
+   description; this header is the law it is built on.
+
+   Complete light palette on bare :root. Dark redefines the same tokens twice:
+   once for the system preference (unless the theme cookie pinned light), once
+   for an explicit data-theme="dark". No colour has its only definition inside
+   a media or attribute block.
+
+   THE COLOUR LAW (binding — a rule that paints outside it is wrong):
+     amber  = happening   encoding, uploading, playing, the time a link has
+                          left, a trim being chosen. The clock is running.
+     green  = done        shareable, saved, copied, kept forever, the card
+                          edge, the wordmark's span. The one moment that matters.
+     red    = loss        delete, revoke, failed. Text and a hairline, never a fill.
+     ink    = every button. One solid ink button per screen; the rest are
+              hairline. No hue ever fills a control, colours a link, or tints
+              a hover. Grey is waiting.
+   ========================================================================== */
+
+/* ---------- faces: self-hosted, embedded, never fetched from anywhere else ----------
+   `?v=__V__` is substituted with the build id when this file is served (internal/web/static.go):
+   a URL inside a stylesheet has no renderer to add the query every other static URL carries, so
+   without it a replaced face would be served from a browser's cache for the hour the static
+   Cache-Control grants. */
+@font-face {
+  font-family: "Spline Sans";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("/static/fonts/spline-sans.woff2?v=__V__") format("woff2");
+}
+@font-face {
+  font-family: "Spline Sans Mono";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("/static/fonts/spline-sans-mono.woff2?v=__V__") format("woff2");
+}
+
+/* ---------- tokens ---------- */
+:root {
+  color-scheme: light;
+  /* daylight studio */
+  --bg: #ECEDEF;
+  --surface: #FFFFFF;
+  --surface-2: #F4F5F6;
+  --line: #D5D7DB;
+  --line-strong: #A7ABB3;
+  --text: #17181C;
+  --muted: #5B5F67;
+  --faint: #787C85;
+  --ok: #0E7C4F;
+  --ok-ink: #FFFFFF;
+  --time: #D98E12;
+  --time-text: #8A5400;
+  --time-ink: #2A1C02;
+  --marker: rgba(217, 142, 18, 0.42);
+  --warn: #8A5400;
+  --danger: #B3261E;
+  --primary: #17181C;
+  --primary-text: #FFFFFF;
+  --media: #0A0A0A;
+  --dim: rgba(236, 237, 239, 0.74);
+  --focus: #17181C;
+  --sans: "Spline Sans", "Segoe UI", Roboto, system-ui, sans-serif;
+  --mono: "Spline Sans Mono", ui-monospace, Consolas, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #191816;
+    --surface: #211F1C;
+    --surface-2: #2A2825;
+    --line: #34312D;
+    --line-strong: #514D47;
+    --text: #ECE9E2;
+    --muted: #A9A59C;
+    --faint: #837F77;
+    --ok: #4CD69A;
+    --ok-ink: #062A1B;
+    --time: #F0B24A;
+    --time-text: #F0B24A;
+    --time-ink: #2A1C02;
+    --marker: rgba(240, 178, 74, 0.45);
+    --warn: #F0B24A;
+    --danger: #F0665C;
+    --primary: #ECE9E2;
+    --primary-text: #191816;
+    --media: #000000;
+    --dim: rgba(25, 24, 22, 0.74);
+    --focus: #ECE9E2;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #191816;
+  --surface: #211F1C;
+  --surface-2: #2A2825;
+  --line: #34312D;
+  --line-strong: #514D47;
+  --text: #ECE9E2;
+  --muted: #A9A59C;
+  --faint: #837F77;
+  --ok: #4CD69A;
+  --ok-ink: #062A1B;
+  --time: #F0B24A;
+  --time-text: #F0B24A;
+  --time-ink: #2A1C02;
+  --marker: rgba(240, 178, 74, 0.45);
+  --warn: #F0B24A;
+  --danger: #F0665C;
+  --primary: #ECE9E2;
+  --primary-text: #191816;
+  --media: #000000;
+  --dim: rgba(25, 24, 22, 0.74);
+  --focus: #ECE9E2;
+}
+
+/* ---------- base ---------- */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; min-height: 100vh; }
+h1, h2, h3, p, ul, dl, dd, figure { margin: 0; }
+ul { padding: 0; list-style: none; }
+h1 { font-size: 22px; line-height: 1.2; font-weight: 600; overflow-wrap: anywhere; word-break: break-word; }
+h2 { font-size: 17px; line-height: 1.3; font-weight: 600; overflow-wrap: anywhere; }
+code, .mono { font-family: var(--mono); font-size: 0.93em; }
+code { background: var(--surface-2); padding: 0.1em 0.35em; border-radius: 3px; word-break: break-all; }
+strong, b { font-weight: 600; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 2px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+::placeholder { color: var(--faint); opacity: 1; }
+[hidden] { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+main.page { max-width: 1040px; margin: 0 auto; padding: 24px; }
+/* Every one-column grid on the site is minmax(0, 1fr), never auto: a table or a long mono line
+   inside a grid item must shrink and scroll in its own box, not widen the page. */
+.watch, .settings, .collection, .trim, .titleblock, .pending, .collections, .colgrid, .clip-row .thumb, .clip-row .info { grid-template-columns: minmax(0, 1fr); }
+
+/* links are highlighted, not coloured: an amber marker stroke that fills on hover */
+a { color: inherit; text-decoration: none; background-image: linear-gradient(var(--marker), var(--marker)); background-repeat: no-repeat; background-position: 0 100%; background-size: 100% 0.16em; transition: background-size 130ms ease; }
+a:hover { background-size: 100% 100%; }
+.linkish { font: inherit; font-size: 14px; color: var(--muted); background: none; border: 0; padding: 2px 1px; cursor: pointer; background-image: linear-gradient(var(--marker), var(--marker)); background-repeat: no-repeat; background-position: 0 100%; background-size: 100% 0.12em; transition: background-size 130ms ease, color 130ms ease; }
+.linkish:hover { color: var(--text); background-size: 100% 0.6em; }
+.linkish:disabled { cursor: default; opacity: 0.6; }
+.linkish[aria-pressed="true"] { color: var(--text); font-weight: 500; }
+
+/* text roles */
+.hint { font-size: 13px; color: var(--faint); }
+.error { color: var(--danger); font-size: 13px; margin: 8px 0 0; }
+.ok { color: var(--ok); font-size: 13px; margin: 8px 0 0; }
+.notice { font-size: 13px; color: var(--muted); padding: 10px 14px; border: 1px solid var(--time); border-radius: 4px; margin: 0 0 16px; }
+.notice b, .notice code { color: var(--time-text); }
+.empty { color: var(--muted); }
+.alt { margin: 4px 0 0; font-size: 14px; }
+.status { color: var(--muted); font-size: 13px; }
+.filter { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
+.more { margin: 12px 0; font-size: 14px; }
+.stats { font-size: 13px; color: var(--faint); }
+.pad { padding: 10px 16px; }
+.time { color: var(--time-text); }
+
+/* ---------- header ---------- */
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 24px; border-bottom: 1px solid var(--line); background: var(--surface); }
+header.top nav { display: flex; align-items: center; gap: 18px; font-size: 14px; min-width: 0; }
+header.top nav .who { max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+header.top nav a { background-image: none; color: var(--muted); }
+header.top nav a:hover, header.top nav a[aria-current] { color: var(--text); }
+header.top nav .who { color: var(--faint); }
+
+/* the theme glyph (§20 erratum 288; web/STYLE.md): the last thing in the bar, on every page that has
+   a bar. One form, two submit buttons, and the STYLESHEET decides which of them exists — the sun on a
+   page painted dark, the moon on a page painted light, each naming the theme it hands you. No button
+   chrome and no label: a 16 px line drawing in --muted that inks on hover, like the nav beside it.
+   `.bar-end` is the slot it shares with the nav, and it is what makes ONE placement true in both
+   states: `header.top` is `space-between`, so the end slot is at the far edge whether it holds the
+   nav and the glyph (a session) or the glyph alone (a stranger's share or collection page, which has
+   no nav at all — erratum 244). The glyph is deliberately NOT inside the <nav>: it navigates
+   nowhere. */
+header.top .bar-end { display: flex; align-items: center; gap: 18px; min-width: 0; }
+.theme-glyph { display: flex; margin: 0; }
+.theme-glyph .glyph { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; padding: 0; border: 0; border-radius: 3px; background: none; color: var(--muted); cursor: pointer; }
+.theme-glyph .glyph:hover { color: var(--text); }
+.theme-glyph .glyph:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.theme-glyph .glyph svg { display: block; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+/* …and the three states, in the SAME ORDER as the token blocks at the top of this file and for the
+   same reason: the bare rule is the complete light answer, the media block is the system's (unless
+   the cookie pinned light), and the attribute block is the cookie's. That order is what lets the
+   server render the bar without knowing the visitor's operating system — it stamps `data-theme` only
+   when the cookie decided, and `prefers-color-scheme` answers for everybody else, with the first byte
+   and no script. A `[data-theme="light"]` block would be dead: the bare rule already is it. */
+.theme-glyph [data-theme-to="light"] { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-glyph [data-theme-to="light"] { display: inline-flex; }
+  :root:not([data-theme="light"]) .theme-glyph [data-theme-to="dark"] { display: none; }
+}
+:root[data-theme="dark"] .theme-glyph [data-theme-to="light"] { display: inline-flex; }
+:root[data-theme="dark"] .theme-glyph [data-theme-to="dark"] { display: none; }
+
+/* the wordmark: the two p stems are the handles, the kept span joins them at the descenders;
+   values measured from the Spline Sans 600 outlines (web/STYLE.md) */
+.wordmark { display: inline-flex; align-items: baseline; font-weight: 600; letter-spacing: -0.025em; color: var(--text); line-height: 1; background-image: none; white-space: nowrap; font-size: 21px; }
+.wordmark .pp { position: relative; }
+/* the span sits 200 font units (0.1em) UNDER the descender tips, as the favicon draws it (§20 erratum 271):
+   -0.165em put its top edge ON the tips, a 0–1 px gap at every size once rounded. */
+.wordmark .pp::after { content: ""; position: absolute; left: 0.071em; width: 0.7105em; bottom: -0.265em; height: 0.1em; background: var(--ok); border-radius: 0.05em; }
+.wordmark.display { font-size: 40px; }
+/* the living mark (ROADMAP #38, §20 erratum 267): the empty overlay app.js fills while the cursor is
+   near. Nothing paints at rest; a pointer that cannot hover never gets one at all. */
+.wordmark .pp > svg.eyes { display: none; position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+@media (hover: hover) { .wordmark .pp > svg.eyes { display: block; } }
+/* the faces (§20 erratum 274): the mouth is the span redrawn as a stroke, clipped from the stems, only
+   while a mouth moves — the span itself hides under it (`mouthing`), so the swap is invisible. `sad` is
+   the one recorded exception to "green = done": a failed clip's frown is --danger, as the stroke and never
+   a repaint of the span. The embed's mouth is the embed's green (erratum 246: the player's black ground). */
+.wordmark .eyes .mouth { stroke: var(--ok); }
+.wordmark.sad .eyes .mouth { stroke: var(--danger); }
+.wordmark .pp.mouthing::after { opacity: 0; }
+.embed-mark .eyes .mouth { stroke: #4CD69A; }
+
+/* the instance badge (§20 erratum 285; web/STYLE.md): GREEN SPAN = PRODUCTION, GREY SPAN = DEV — the
+   rule the two Discord application icons already set. On an instance wearing INSTANCE_BADGE the mark
+   goes monochrome: the span, and a face's mouth with it, paint --line-strong. Colour ONLY — the
+   geometry, the weight, the tracking, the eyes, the faces and the embed overlay's box are untouched,
+   so a dev page and a production page differ in one channel and nothing moves.
+   `:not(.sad)` is LOAD-BEARING and not decoration: `sulk`'s red frown is the one recorded exception to
+   "green = done" (erratum 274), and a bare `:root[data-badge] .wordmark .eyes .mouth` is one class
+   heavier than `.wordmark.sad .eyes .mouth`, so it won and painted a failed clip's mouth grey on every
+   badged page. Red is loss; a failed clip is not a thing an environment recolours. */
+:root[data-badge] .wordmark .pp::after { background: var(--line-strong); }
+:root[data-badge] .wordmark:not(.sad) .eyes .mouth { stroke: var(--line-strong); }
+/* The overlay's ground is the player's own black whatever the page theme, so it spends a fixed value
+   rather than a token — as it already does for its green and its text (erratum 246). The grey is the
+   dark palette's --faint (#837F77, about 5.2:1 on black) and NOT its --line-strong (#514D47, about
+   2.5:1), which at 16 px over a poster reads as a missing span rather than a grey one. The mouth takes
+   the same value and must be spelled out: without this line it would inherit the PAGE theme's
+   --line-strong from the rule above, and the overlay would carry two different greys. Both rules come
+   after the two above, and at equal specificity, which is what makes them win on the embed. */
+:root[data-badge] .embed-mark .pp::after { background: #837F77; }
+:root[data-badge] .embed-mark:not(.sad) .eyes .mouth { stroke: #837F77; }
+
+/* …and the word itself. One small mono tag, never a tile and never an icon: the wordmark IS the logo
+   and nothing may stand beside it but this (the rule, web/STYLE.md). ONE placement everywhere: the
+   tag FOLLOWS THE WORD, on the same line, 8 px after it, vertically centred on the mark's box — the
+   header's arrangement, at both sizes. It exists on no production page at all.
+   The owner's call, 2026-09-15, on the first build's tag UNDER the display mark: centred under the
+   logo it is centred on neither the word nor the double p, so it looks a bit off — the span is centred on the double p, not on the word, so anything centred under
+   the word reads as off-axis against it. Beside the word there is no axis to disagree with.
+   `.instance` and not `.badge`: `.badge` is already the state chip on a poster frame (below), and one
+   class name with two meanings is how a stylesheet starts lying about itself. */
+.instance { font-family: var(--mono); font-size: 11px; line-height: 1; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); background: var(--surface-2); border-radius: 3px; padding: 2px 6px; white-space: nowrap; }
+/* header.top is `justify-content: space-between` with a 16px gap: `margin-right: auto` keeps the nav
+   at the far edge (without it the tag would float to the middle of the bar) and the negative left
+   margin trims that gap to 8. No vertical rule at all — the tag rides the header's own centre line,
+   which is what keeps the WORDMARK where it is: giving either of them `align-self: baseline` would
+   move the mark down the band on a badged instance, and the mark's geometry may not move. */
+header.top > .instance { margin-left: -8px; margin-right: auto; }
+/* The DISPLAY lockup: a three-column grid, `1fr auto 1fr`, rendered ONLY on a badged page (the
+   templates emit the wrapper inside `{{with .Badge}}`, so an unbadged page's markup is byte-identical
+   to the one that shipped before this feature). The mark sits in the MIDDLE column and the tag in the
+   third, which is the whole trick: the two outer 1fr columns are equal, so the middle column's centre
+   is the container's centre and the mark stays EXACTLY where `.auth`/`.message`'s own
+   `justify-items: center` had put it. A flex row with a gap would have shifted the word left by half
+   the tag; `domBadge` asserts the mark's centre against the lockup's, within a pixel.
+   `width: 100%` makes the lockup the container rather than a shrink-to-fit box around the pair —
+   without it the three columns would size to the pair and centre THAT, which is the shift again. */
+.lockup { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; justify-items: center; width: 100%; }
+.lockup > .wordmark { grid-column: 2; }
+.lockup > .instance { grid-column: 3; justify-self: start; margin-left: 8px; }
+
+/* ---------- the rail: one object, every state ---------- */
+.rail { position: relative; height: 4px; border-radius: 2px; background: var(--line); }
+.rail > i { position: absolute; top: 0; bottom: 0; left: 0; width: 0; background: var(--line-strong); border-radius: 2px; overflow: hidden; transition: width 240ms ease-out; }
+.rail.working > i { background: var(--time); }
+.rail.working > i::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent); animation: sweep 1.6s linear infinite; }
+@keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.rail > i.indeterminate { width: 30%; left: auto; animation: slide 1.2s linear infinite; }
+@keyframes slide { from { margin-left: -30%; } to { margin-left: 100%; } }
+.rail.full > i { width: 100%; background: var(--ok); }
+.rail.done > i { width: 100%; }
+.rail.left > i { background: var(--time); }
+.rail.queued { background: repeating-linear-gradient(90deg, var(--line-strong) 0 4px, transparent 4px 9px); }
+.rail.queued > i { width: 0; }
+.rail .tick { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--time); border-radius: 1px; }
+.readout { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--muted); margin-top: 5px; }
+.readout .n { font-family: var(--mono); }
+.lamp { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); vertical-align: 0.05em; flex: none; }
+.lamp.off { background: var(--line-strong); }
+.lamp.on { background: var(--time); animation: pulse 2.4s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+.live { display: inline-flex; align-items: center; gap: 7px; }
+.ready { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; color: var(--ok); }
+
+/* ---------- buttons: ink; the hue never fills one ---------- */
+.btn { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border-radius: 4px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); font-weight: 500; font-size: 14px; cursor: pointer; white-space: nowrap; background-image: none; text-decoration: none; }
+.btn:hover { border-color: var(--text); }
+.btn:disabled { opacity: 0.55; cursor: default; }
+.btn svg { width: 16px; height: 16px; flex: none; }
+.btn.primary { background: var(--primary); color: var(--primary-text); border-color: var(--primary); }
+.btn.primary:hover { opacity: 0.92; }
+.btn.danger { color: var(--danger); border-color: transparent; background: transparent; padding-left: 0; }
+.btn.danger:hover { text-decoration: underline; text-underline-offset: 3px; border-color: transparent; }
+.btn.small { height: 30px; padding: 0 10px; font-size: 13px; }
+.btn input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.btn:has(input[type="file"]:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ---------- fields ---------- */
+input[type="text"], input[type="password"], input[type="search"], input[type="number"], input[type="email"], textarea, select {
+  display: block; width: 100%; height: 36px; padding: 0 10px; background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 4px; color: var(--text); margin: 0;
+}
+textarea { height: auto; padding: 8px 10px; resize: vertical; min-height: 64px; }
+select { appearance: none; -webkit-appearance: none; padding-right: 30px; width: auto; background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-position: calc(100% - 15px) 15px, calc(100% - 10px) 15px; background-size: 5px 5px; background-repeat: no-repeat; }
+/* A <select>'s rows draw from the UA palette unless the options carry the
+   page's own — white-on-white in a dark UI on some platforms. */
+option { background: var(--surface); color: var(--text); }
+input[type="number"] { font-family: var(--mono); }
+input[type="file"] { color: var(--text); }
+.check { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.check input { width: 16px; height: 16px; margin: 0; accent-color: var(--text); flex: none; }
+.check .n { color: var(--faint); font-size: 12px; }
+.check .hint { margin-left: 2px; }
+.switch { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; position: relative; }
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
+.switch i { position: relative; width: 34px; height: 20px; border-radius: 10px; background: var(--line-strong); transition: background 120ms; flex: none; }
+.switch i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); transition: transform 120ms ease-out; }
+.switch input:checked + i { background: var(--text); }
+.switch input:checked + i::after { transform: translateX(14px); }
+.switch input:focus-visible + i { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* the segmented control is a radio group: a real form without a client, one press with one */
+.seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 4px; overflow: hidden; flex-wrap: wrap; }
+.seg-opt { position: relative; }
+.seg-opt input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
+.seg-opt span { display: block; padding: 6px 12px; cursor: pointer; font-size: 13px; color: var(--muted); }
+.seg-opt + .seg-opt span { border-left: 1px solid var(--line-strong); }
+.seg-opt input:checked + span { background: var(--primary); color: var(--primary-text); }
+.seg-opt input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: -3px; }
+.tag { display: inline-block; font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 0 6px; line-height: 18px; background-image: none; }
+.tag:hover { color: var(--text); border-color: var(--line-strong); }
+.tag.tier { color: var(--time-text); border-color: var(--time); }
+.flag { color: var(--muted); font-size: 12px; }
+
+/* ---------- THE ONE GRAMMAR: label | control | state, every page ---------- */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+.panel + .panel, .panel + form.panel { margin-top: 16px; }
+.panel-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.row { display: grid; grid-template-columns: 9rem minmax(0, 1fr) auto; gap: 10px 16px; align-items: center; padding: 12px 16px; }
+.row + .row, .table + .row, .picker + .row { border-top: 1px solid var(--line); }
+.row.top { align-items: start; }
+.row.top .rl { padding-top: 9px; }
+.rl { font-size: 13px; color: var(--muted); }
+.rc { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
+/* `min-width: 0` is not decoration (§20 erratum 288 (b)): a flex item's automatic minimum size is its
+   CONTENT's, and an <input>'s content width is its `size` — about 260 px here — so without this an
+   input refuses to shrink below that and spills out of the control column whatever the track is. It
+   did, on the register panel: the mono hint was drawn over the right half of the username field
+   (found on the owner's look, 2026-09-16). The rule
+   is global because the failure is: any row whose control column is narrower than an input's
+   intrinsic width does it, and a control may never leave its own track. */
+.rc > input, .rc > textarea { flex: 1 1 14rem; width: auto; min-width: 0; }
+.rc .wide { flex: 1 1 100%; }
+.rs { font: 12px/1.4 var(--mono); color: var(--muted); text-align: right; justify-self: end; max-width: 26ch; }
+.rs.ok { color: var(--ok); }
+.rs.time { color: var(--time-text); }
+.rs.danger { color: var(--danger); }
+.row .hint { flex: 1 1 100%; }
+.panel > .error, .panel > .ok { padding: 0 16px 12px; margin: 0; }
+.panel > .error[hidden], .panel > .ok[hidden] { display: none; }
+.collist, .scopes { display: grid; gap: 6px; }
+
+/* ---------- posters + player ---------- */
+.frame { position: relative; display: block; aspect-ratio: 16 / 9; border-radius: 4px; overflow: hidden; background: var(--media); background-image: none; }
+.frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.frame.empty { display: grid; place-items: center; color: var(--faint); font-size: 12px; background: var(--surface-2); border: 1px solid var(--line); }
+.badge { font-size: 12px; color: var(--faint); }
+.duration { position: absolute; right: 5px; bottom: 5px; font-family: var(--mono); font-size: 11px; line-height: 16px; padding: 0 5px; border-radius: 2px; background: rgba(0, 0, 0, 0.72); color: #fff; }
+/* The player is bounded, not stretched: the intrinsic aspect ratio decides the box, capped by
+   the column and by 75vh, so a portrait phone capture draws with no bars beside it. */
+.player { display: flex; justify-content: center; }
+.clip video { display: block; max-width: 100%; width: auto; height: auto; max-height: 75vh; margin-inline: auto; background: var(--media); border-radius: 8px; }
+.gif-preview { display: block; max-width: 100%; max-height: 40vh; background: var(--media); border-radius: 8px; }
+/* A handle dragged outside the current cut names a moment the player cannot show. */
+.clip video.out-of-cut { filter: grayscale(1); opacity: 0.55; }
+/* An audio clip (§20 erratum 328): the card picture on the player's black, the native control
+   under it at the picture's width. Same radius, same 75vh cap, nothing else. */
+.player.audio { flex-direction: column; align-items: center; gap: 8px; }
+.player.audio .audio-picture { display: block; max-width: 100%; height: auto; max-height: 60vh; background: var(--media); border-radius: 8px; }
+/* The page's own progress (§20 erratum 329): the frame shrinks to the picture, and app.js lays the
+   bars over it in the played colour (the dark palette's --time, the card's amber), clipped to what
+   has been heard. The picture is a drawing on the ink tile whatever the theme, so the colour is the
+   picture's, not the page's. */
+.player.audio .audio-wave { position: relative; max-width: 100%; line-height: 0; }
+.player.audio .wave-played { position: absolute; inset: 0; width: 100%; height: 100%; fill: #F0B24A; pointer-events: none; clip-path: inset(0 100% 0 0); }
+.player.audio audio { display: block; width: 100%; max-width: 640px; }
+
+/* ---------- watch page ---------- */
+/* .watch is on <body> too (BodyClass), and body is min-height 100vh: without align-content the
+   header band would stretch to take every spare viewport pixel above a short page. */
+.watch { display: grid; gap: 16px; align-content: start; }
+.watch h1 { font-size: 30px; line-height: 1.08; font-weight: 700; letter-spacing: -0.03em; }
+.titleblock { display: grid; gap: 6px; }
+.clip .description { color: var(--muted); max-width: 64ch; white-space: pre-wrap; overflow-wrap: anywhere; }
+.under { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 22px; }
+.quality { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.quality label { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+.quality select { height: 30px; font-size: 13px; background-position: calc(100% - 13px) 12px, calc(100% - 8px) 12px; }
+.player-extras { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pending { display: grid; gap: 8px; }
+.pending .state { font-size: 13px; color: var(--muted); }
+.pending .state::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--time); animation: pulse 2.4s ease-in-out infinite; }
+.state.failed { color: var(--danger); font-size: 14px; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 13px; color: var(--muted); }
+.facts div { display: flex; gap: 6px; align-items: baseline; }
+.facts dt { color: var(--faint); }
+.facts dd { color: var(--text); overflow-wrap: anywhere; }
+.facts .hint { font-size: 12px; }
+
+/* actions: one shape, one strip, one of them loud */
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.actions .act { display: contents; }
+.actions .copied, .copied { font-size: 13px; color: var(--ok); }
+.actions .hint { flex: 0 1 auto; }
+.actions .btn .lamp { margin-right: 0; }
+.btn.primary .lamp { background: var(--ok); }
+.btn.primary .lamp.off { background: var(--line-strong); }
+
+/* the filmstrip rail: the bold element, and the only control that touches the picture */
+.trim { display: grid; gap: 10px; margin-top: -8px; }
+.scrubber { padding-top: 30px; }
+.scrubber .track { position: relative; height: 72px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line); }
+.scrubber .strip { position: absolute; top: 0; bottom: 0; overflow: hidden; border-radius: 5px; }
+.scrubber .strip img { display: block; width: 100%; height: 100%; object-fit: fill; }
+.scrubber .cut { position: absolute; top: 0; bottom: 0; background: var(--dim); border-radius: 5px; pointer-events: none; }
+.scrubber .chosen { position: absolute; top: 0; bottom: 0; border-top: 2px solid var(--time); border-bottom: 2px solid var(--time); pointer-events: none; }
+.scrubber .handle { position: absolute; top: -1px; bottom: -1px; width: 12px; margin-left: -6px; padding: 0; border: 0; background: var(--time); border-radius: 3px; cursor: ew-resize; touch-action: none; }
+.scrubber .handle::after { content: ""; position: absolute; left: 5px; top: 50%; width: 2px; height: 16px; margin-top: -8px; background: var(--time-ink); opacity: 0.55; border-radius: 1px; }
+.scrubber .handle.outside { background: repeating-linear-gradient(180deg, var(--time) 0 4px, transparent 4px 7px); }
+.scrubber .handle .tc { position: absolute; top: -26px; left: 50%; transform: translateX(-50%); display: inline-flex; gap: 5px; font-family: var(--mono); font-size: 12px; line-height: 20px; padding: 0 6px; border-radius: 3px; background: var(--text); color: var(--bg); white-space: nowrap; pointer-events: none; }
+.scrubber .handle .handle-label { font-family: var(--sans); color: var(--line-strong); }
+/* A tag near either end sits inside the trough instead of hanging off the page (app.js sets the class). */
+.scrubber .handle.at-start .tc { left: -6px; transform: none; }
+.scrubber .handle.at-end .tc { left: auto; right: -6px; transform: none; }
+.scrubber .handle:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+/* One tile of the sheet, above the handle's tag. It appears on hover, on keyboard focus and for
+   the whole of a drag (app.js adds .dragging). */
+/* display, not opacity: a hidden tile must not widen the page (scrollable overflow counts a
+   transparent box), and near either end it sits inside the trough like the tag. */
+.scrubber .handle-tile { position: absolute; left: 50%; bottom: calc(100% + 32px); transform: translateX(-50%); overflow: hidden; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); display: none; pointer-events: none; }
+.scrubber .handle-tile img { position: absolute; top: 0; left: 0; display: block; max-width: none; }
+.scrubber .handle:hover .handle-tile, .scrubber .handle:focus-visible .handle-tile, .scrubber .handle.dragging .handle-tile { display: block; }
+.scrubber .handle.at-start .handle-tile { left: -6px; transform: none; }
+.scrubber .handle.at-end .handle-tile { left: auto; right: -6px; transform: none; }
+.trim .trim-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 0; font-size: 13px; color: var(--muted); border: 0; }
+.trim .tcfield { display: inline-flex; align-items: center; gap: 8px; }
+.trim .trim-row input[type="number"] { width: 9ch; height: 30px; font-size: 13px; padding: 0 8px; appearance: textfield; -moz-appearance: textfield; }
+.trim input[type="number"]::-webkit-outer-spin-button, .trim input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.trim .kept { font-family: var(--mono); color: var(--text); }
+.trim .trim-row .btn { margin-left: auto; }
+.trim .trim-row .hint { flex: 1 1 100%; }
+
+/* ---------- library ---------- */
+.upload { display: grid; grid-template-columns: 300px minmax(0, 1fr); grid-template-areas: "drop fields"; align-items: start; margin-bottom: 22px; }
+.upload-fields { grid-area: fields; border-left: 1px solid var(--line); }
+.upload-fields .row:first-child { border-top: 0; }
+/* The upload target is the shape of the thing you are about to get: a 16:9 frame with its own rail. */
+.drop { grid-area: drop; align-self: start; position: relative; margin: 16px; display: grid; gap: 4px; align-content: center; justify-items: center; text-align: center; aspect-ratio: 16 / 9; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line-strong); padding: 12px 14px 34px; cursor: pointer; }
+.upload.dropping .drop { border-color: var(--text); }
+.drop b { font-weight: 600; }
+.drop .hint { max-width: 26ch; }
+.drop .btn { margin-top: 6px; }
+.drop input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.drop:has(input[type="file"]:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.drop-status { position: absolute; left: 14px; right: 14px; bottom: 10px; display: block; text-align: left; }
+.drop-status .rail { display: block; }
+/* The foot is two lines (§20 erratum 314, after 313): the name alone across the whole foot, ellipsising
+   only when it is wider than that (the whole name is its `title`), and under it the lamp and the stage
+   phrase, left-aligned, wrapping only when the phrase alone is wider than the row. The 300 px drop
+   column leaves the foot about 240 px, which a name BESIDE the phrase cut to two characters. An empty
+   name takes no line, so a foot with nothing picked is the one line it always was. */
+.drop-status .readout { margin-top: 4px; font-size: 12px; line-height: 16px; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 0; }
+.drop-status .name { align-self: stretch; font-family: var(--mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.drop-status .name:empty { display: none; }
+.drop-status .live { flex: none; max-width: 100%; }
+.drop-status .status { min-height: 1.4em; }
+/* …and the frame makes room for the second line only while there is a name: the resting frame
+   (nothing picked) keeps its 34 px and is pixel-identical to the one before. */
+.drop:has(.drop-status .name:not(:empty)) { padding-bottom: 54px; }
+.libbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 0 0 10px; }
+.libbar .stats { margin-left: auto; }
+.search { display: flex; align-items: center; gap: 14px; flex: 1 1 auto; flex-wrap: wrap; }
+.search .field { position: relative; flex: 1 1 260px; display: block; }
+.search .field svg { position: absolute; left: 10px; top: 10px; width: 16px; height: 16px; color: var(--faint); pointer-events: none; }
+/* Only the magnifier's room is set here. The field keeps the sheet's own well
+   (STYLE.md's token table gives every field --surface-2); this was the one
+   input override on the page, and a white box in a room of grey ones read as
+   unfinished. */
+.search .field input { padding-left: 34px; }
+.clips { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+.clip-row { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 14px; align-items: start; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.clip-row:last-child { border-bottom: 0; }
+.clip-row.picked { background: var(--surface-2); }
+[data-bulk-ready] .clip-row { grid-template-columns: 20px 160px minmax(0, 1fr); }
+/* The per-row checkbox is invisible until app.js says the page has a client (`data-bulk-ready`):
+   a checkbox that cannot act is worse than no checkbox. The column is reserved for EVERY row once
+   it is live — a row you do not own renders an empty `.pick` — so a mixed library keeps one left
+   edge for its thumbnails. */
+.clip-row .pick { display: none; place-items: center; padding-top: 2px; }
+[data-bulk-ready] .clip-row .pick { display: grid; }
+.clip-row .pick input { width: 16px; height: 16px; margin: 0; accent-color: var(--text); }
+.clip-row .thumb { display: grid; gap: 6px; }
+.clip-row .info { display: grid; gap: 4px; min-width: 0; }
+.clip-row .title { font-weight: 600; background-image: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.clip-row .title:hover { background-image: linear-gradient(var(--marker), var(--marker)); }
+.clip-row .sub { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); }
+.clip-row .sub .warn { color: var(--warn); }
+.clip-row .tags { display: flex; gap: 4px; flex-wrap: wrap; }
+.clip-row .status { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 7px; }
+.clip-row .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--time); animation: pulse 2.4s ease-in-out infinite; flex: none; }
+.clip-row[data-state="queued"] .status::before { background: var(--line-strong); animation: none; }
+.bulk { position: sticky; bottom: 12px; z-index: 5; display: grid; gap: 6px; margin-top: 14px; padding: 10px 14px; background: var(--primary); color: var(--primary-text); border-radius: 6px; }
+.bulk-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.bulk .count { font-weight: 600; margin-right: 6px; }
+.bulk-row > label { font-size: 13px; opacity: 0.85; }
+.bulk .linkish { color: inherit; opacity: 0.85; }
+.bulk .sep { width: 1px; height: 22px; background: currentColor; opacity: 0.25; }
+.bulk input, .bulk select { height: 30px; font-size: 13px; background-color: transparent; color: inherit; border-color: currentColor; width: auto; }
+.bulk input[type="text"] { width: 12ch; }
+.bulk select { background-position: calc(100% - 13px) 12px, calc(100% - 8px) 12px; }
+.bulk .btn { height: 30px; font-size: 13px; background: transparent; color: inherit; border-color: currentColor; }
+.bulk .btn.danger { color: var(--danger); border-color: transparent; padding-left: 10px; }
+/* The destructive end of the bar trails, separator and all: the row wraps by construction, and this
+   makes it break in the same place every time — Delete is the right-hand end of its line and never
+   sits mid-row beside Set. Progressive: a browser without :has() gets the bar exactly as it was. */
+.bulk-row .sep:has(+ .btn.danger) { margin-left: auto; }
+.bulk .hint, .bulk .status, .bulk .error { color: inherit; opacity: 0.85; margin: 0; }
+.bulk .status:empty { display: none; }
+.collections { margin-top: 28px; display: grid; gap: 10px; }
+.colgrid { display: grid; gap: 8px; }
+.colcard { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; background-image: none; }
+.colcard:hover { border-color: var(--line-strong); }
+.colcard .stack { position: relative; width: 56px; height: 32px; flex: none; }
+.colcard .stack i { position: absolute; inset: 0; border-radius: 3px; background: var(--line-strong); }
+.colcard .stack i:nth-child(1) { transform: translate(6px, -4px); opacity: 0.5; }
+.colcard .stack i:nth-child(2) { transform: translate(3px, -2px); opacity: 0.75; }
+.colcard .sub { margin-left: auto; color: var(--faint); font-size: 13px; }
+.newcol { display: flex; gap: 8px; flex-wrap: wrap; max-width: 480px; }
+.newcol input { flex: 1 1 200px; width: auto; background: var(--surface); }
+.newcol .error, .newcol .hint { flex: 1 1 100%; }
+
+/* ---------- collection page ---------- */
+.collection { display: grid; gap: 16px; }
+.collection .collection-clips .clip-row { grid-template-columns: 160px minmax(0, 1fr) auto; align-items: center; }
+.row-actions { display: flex; align-items: center; gap: 10px; }
+.picker { max-height: 15rem; overflow-y: auto; padding: 8px 16px; display: grid; gap: 4px; }
+.picker .choice { padding: 3px 0; }
+.picker .choice-thumb { width: 80px; height: 45px; flex: none; object-fit: cover; border-radius: 3px; background: var(--media); }
+.picker .choice-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- settings ---------- */
+.settings { display: grid; gap: 16px; }
+.settings > .hint { margin-top: -10px; }
+.settings .panel + .panel, .settings form.panel + .panel { margin-top: 0; }
+.table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.table th { text-align: left; font-weight: 500; font-size: 13px; color: var(--muted); padding: 10px 16px; border-bottom: 1px solid var(--line); }
+.table td { padding: 9px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.table tr:last-child td { border-bottom: 0; }
+.table .ua { color: var(--faint); font-size: 13px; word-break: break-word; max-width: 22rem; }
+.table .this { font-size: 12px; color: var(--ok); margin-left: 6px; }
+.table .m { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.table .m code { background: none; padding: 0; }
+.table .btn.small { height: 26px; }
+.token-new { margin: 12px 16px 16px; padding: 12px 14px; border: 1px solid var(--time); border-radius: 4px; display: grid; gap: 10px; }
+.token-new .once { font-size: 13px; color: var(--time-text); }
+.token-new code { display: block; padding: 8px 10px; background: var(--surface-2); border-radius: 3px; word-break: break-all; font-size: 13px; }
+.token-new .inline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.token-new .sxcu { display: contents; }
+
+/* ---------- /setup: the first-run wizard (ROADMAP #45, DESIGN.md §20 errata 297-299, 309-311) ---------- */
+/* The owner's blank-sheet mock of 2026-09-21 (erratum 311): the settings layout plus three small components
+   and no new token — the numbered head, the radio cards and the callout (web/STYLE.md names all three).
+   The WALK is the only ordered list in the product: numbers outside the text so the sentences line up,
+   each step's dated label hint under it in the hint face, and it runs full width in `.walk-body` — no
+   label column, no row grammar — with the dated `labels read` line under it in the state cell's face.
+   The BLOCK is a value a person copies, so it follows the rule the claim page's commands already set —
+   shown whole, wrapping at any character rather than clipping, and `user-select: all`, so one click takes
+   the lot and never half a line. */
+.setup .walk { margin: 0; padding-left: 1.4rem; display: grid; gap: 10px; font-size: 14px; max-width: 72ch; }
+/* A grid item's minimum is its min-content, and a step that names a mount string with no space in it
+   (`uid=10001,gid=10001,…`) is 450 px of min-content: at 390 the column could not shrink and the page
+   scrolled sideways (the FOURTEENTH GATE's visual pass on clippet.gg). min-width lets the track shrink;
+   overflow-wrap gives that one token a break opportunity, and every other word wraps as before. */
+.setup .walk > li { padding-left: 4px; min-width: 0; overflow-wrap: anywhere; }
+.setup .walk > li::marker { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+.setup .walk .hint { display: block; margin-top: 3px; }
+.setup pre.env { margin: 0; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 3px; font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; user-select: all; }
+.setup code.mono { background: var(--surface-2); border-radius: 3px; padding: 2px 6px; overflow-wrap: anywhere; user-select: all; }
+/* The numbered head: a panel head whose h2 starts with a step number — a 22 px mono chip, hairline, no
+   fill. The number is the sequence the owner asked to see; the h2 stays the h2. A step that is not
+   reachable yet renders as its head alone, muted and dashed (`.panel.later`): the sequence is visible
+   before the first pick, and nothing below the pick pretends to be ready. */
+.setup .panel-head h2 { display: flex; align-items: center; gap: 10px; }
+.setup .panel-head .n { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; flex: none; border: 1px solid var(--line-strong); border-radius: 4px; font: 500 12px/1 var(--mono); color: var(--muted); }
+.setup .panel.later { background: transparent; border-style: dashed; }
+.setup .panel.later .panel-head { border-bottom: 0; }
+.setup .panel.later h2 { color: var(--faint); font-weight: 500; }
+.setup .panel.later .n { color: var(--faint); border-color: var(--line); }
+/* The radio cards: six choices shown at once, each a label, its one fact and a state cell (the fact ·
+   `on now` · `refused`). Radios, so the form posts `store` like any other field. Ink border and an ink
+   dot on the chosen one; no fill, no hue. Two across above 780 px, one below; the state cell wraps
+   under the name at 600. */
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 16px; }
+.choice { position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; gap: 8px 12px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface); cursor: pointer; min-width: 0; }
+.choice:hover { border-color: var(--text); }
+.choice input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
+.choice .dot { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--line-strong); background: transparent; }
+.choice .name { font-size: 14px; line-height: 1.35; min-width: 0; overflow-wrap: anywhere; }
+.choice .rs { max-width: none; }
+.choice:has(input:checked) { border-color: var(--text); }
+.choice:has(input:checked) .dot { border-color: var(--text); background: var(--text); box-shadow: inset 0 0 0 2.5px var(--surface); }
+.choice:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* The callout: one bold sentence and up to two plain ones, a red hairline — the STOP and the refusal.
+   Red is loss (the clips a switch strands; the pick the page will not honour): a hairline, never a fill.
+   `.notice` already has this shape in amber. */
+.callout { margin: 12px 16px; padding: 10px 14px; border: 1px solid var(--danger); border-radius: 4px; font-size: 14px; max-width: 64ch; }
+.callout b { color: var(--danger); }
+.callout code { background: none; padding: 0; font-size: 0.93em; }
+.choices + .row, .callout + .row { border-top: 1px solid var(--line); }
+/* The walk: full width, no label column. */
+.walk-body { padding: 12px 16px 16px; display: grid; gap: 12px; }
+.walk-body > .callout { margin: 0 0 4px; }
+.walk-meta { display: flex; justify-content: flex-end; margin-top: -4px; }
+.env-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }
+.env-head .rl { font-size: 13px; }
+
+/* ---------- auth + message pages ---------- */
+/* `.front` (below) overrides only the top margin. Physical and logical longhands for one side cascade
+   together, so a longhand here does NOT remove the order dependency by itself; the override is
+   `.auth.front`, one class more specific, which wins whatever the order (verifier, light pass). */
+.auth { max-width: 460px; margin-inline: auto; margin-block: 40px; display: grid; gap: 22px; justify-items: center; }
+/* Air under the display mark's green span (§20 erratum 288 (e); the owner on the live 404, 2026-09-16:
+   Not Found sat far too close to the logo). The span is a pseudo-element hanging 0.265em BELOW the
+   mark's own box (web/STYLE.md, erratum 271), and an absolutely positioned one at that — so it is in
+   no box the grid can see, and a container that stacks a heading under the mark measures from the
+   wrong edge. On the 404 that left ONE pixel between the green line and the top of "Not found", and
+   the line read as an underline on the heading rather than as part of the logo. The gap is opened on
+   the CONTAINER — this margin is on the mark's grid CELL, and on a badged page on the `.lockup` that
+   holds it — and never on the mark: the geometry, the tracking and the span's own placement are
+   erratum 271's, `domBadge` measures the mark's box, and a padding on the mark would push the
+   instance tag off the line it shares with the word. 0.5em, so it scales with the mark (20 px at the
+   40 px lockup, 16 px at the 32 px one on a phone), which pays the 0.265em overhang back and leaves
+   the rest as air: about 21 px on the 404, 27 on the front door, 31 under the auth panels' 22 px gap. */
+.auth > .wordmark.display, .auth > .lockup,
+.message > .wordmark.display, .message > .lockup { margin-bottom: 0.5em; }
+.auth .panel { width: 100%; }
+.auth .panel-head h1 { font-size: 17px; }
+/* The auth panel is 460 px wide, and the one grammar does not fit in it (§20 erratum 288 (b)): a 9rem
+   label, a 12px-mono state cell of up to 26ch and a control between them leaves the control about
+   70 px of track, which is narrower than any input wants to be. So the auth panel reads the way EVERY
+   panel reads under 780 px — label above, control the full width, the hint under the control and
+   left-aligned — at every width instead of only on a phone. These are the same four rules the
+   breakpoint below already writes, applied to one container earlier; login's empty state cells
+   disappear here exactly as they do there. */
+.auth .row { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.auth .row.top .rl { padding-top: 0; }
+.auth .rs { text-align: left; justify-self: start; max-width: none; }
+.auth .rs:empty { display: none; }
+.message { max-width: 460px; margin-inline: auto; margin-block: 64px; display: grid; gap: 12px; justify-items: center; text-align: center; }
+.message p { color: var(--muted); }
+/* the front door (§20 erratum 246): the wordmark, one line, one ink button, the register link */
+.auth.front { margin-block-start: 96px; }
+.front { gap: 18px; text-align: center; }
+.front .line { margin: 0; font-size: 17px; line-height: 1.4; color: var(--muted); max-width: 64ch; }
+.front .enter { margin: 6px 0 0; }
+
+/* ---------- embed: chrome-less black full-viewport player (§9.2) ---------- */
+body.embed { position: relative; background: #000; color: #ccc; margin: 0; width: 100vw; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+body.embed video { width: 100%; height: 100%; max-height: 100vh; object-fit: contain; background: #000; display: block; }
+.embed-status { margin: 0; font-size: 1.1rem; text-align: center; }
+/* the wordmark on the player (§20 errata 246, 287): top-LEFT, clear of the native controls' bottom band
+   at any card size; on the poster and while paused, gone while playing.
+   It was top-right from 246 until 287 put the clip's DURATION in the top-right of every poster, which
+   is where every video site has always put one and where the owner asked for it. At a card's own size
+   (400 × 225) the video fills the frame, the poster's corner and the overlay's corner are the same
+   corner, and the two printed on top of each other — measured on the visual pass's own `embed-card`
+   shot. The overlay is ours and costs two values to move; the label is burned into a picture that is
+   also the library's thumbnail, the collection picker's and Discord's card image. So the mark moved.
+   LEFT and not lower: the bottom band is the native controls' (246's reason, unchanged) and a fixed
+   vertical offset cannot clear the label anyway — the overlay is positioned against the FRAME and the
+   label lives in the PICTURE, so they only align when the video fills the frame and drift apart when it
+   is letterboxed. The non-ready frame's status line is centred (`.embed-status`), so nothing of ours
+   was in the top-left.
+   The ground here is always the player's black whatever the page theme, so the colours are the dark
+   palette's own text and green rather than the tokens, and the shadow is the one thing that keeps the
+   letters legible over a poster's bright pixels — the ink rule cannot apply on a picture.
+   Since §20 erratum 287 the overlay reads the instance's own HOST and that shadow is TWO layers, and
+   the numbers behind that are worth having (the brief: readable on any background, without making it much more
+   obtrusive; computed by a contrast script). #ECE9E2 on white is 1.21:1 — over a
+   bright poster the letters are not carried by their own colour at all, they are carried by the dark
+   edge under them. The added `0 1px 2px` at 60 % deepens and widens that edge: the pixel directly under
+   a glyph goes from about #494949 (7.6:1) to #2B2B2B (11.8:1) and the dark band reaches a pixel
+   further, which is what holds the letter shapes together on a bright frame. Over black it is
+   invisible, there being nothing left to darken.
+   What it does NOT do, said plainly: both layers are offset DOWNWARD, so the top edge of a glyph on a
+   white frame is still about 1.1:1 and the sides about 1.7:1. A mark that read at full contrast on any
+   frame would need a scrim, a plate or a text-stroke — all three ruled out here, because this is a
+   LOGO and a logo is recognised rather than read. The one thing on a picture that must be READ, the
+   poster's duration, gets a plate for exactly that reason (§20 erratum 287(e)).
+   No scrim, no plate, no size change — erratum 246's 16 px and its 10 px / 12 px insets are exactly
+   what they were, and this is still the ONE shadow web/STYLE.md allows. */
+.embed-mark { position: absolute; top: 10px; left: 12px; z-index: 1; font-size: 16px; color: #ECE9E2; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.85), 0 1px 2px rgba(0, 0, 0, 0.6); }
+.embed-mark .pp::after { background: #4CD69A; }
+/* …and a BOUND on the plain form's width (a nit from lane card). The overlay reads the instance's own
+   host since erratum 287, and the poster's burned-in duration plate sits in the top-right of the same
+   picture. Measured at a Discord card's own 400 x 225: 16 px text from 12 px in runs to roughly 47
+   characters before it reaches that plate, so a self-hoster on a ~40-character domain
+   (`clips.averylongsubdomain.example.com`) has only a few characters of clearance and nothing fails if
+   the two merely touch — the visual pass fails only when the box leaves the FRAME. 80 % of the width
+   less the 12 px inset ends the text at 0.8 x the width; the plate's own left edge is at about 0.87
+   for the longest duration a clip can carry (`1:23:45` at 4.5 % of the height, inset by 12/720 of it),
+   so the gap is ~7 % of the width at every size — the plate scales with the picture and this bound
+   scales with it.
+   It is scoped to the form that has NO `.pp`, and both halves of that matter. The branded form is a
+   `*.clippet.gg` host with the wordmark inside it: short by construction, and it carries the green
+   span, which `.pp::after` draws BELOW the text box — an `overflow: hidden` on it would cut the span
+   off. The plain form is one text node, so it can be a block container and ellipsize properly; as a
+   flex container it could only have been clipped mid-letter. A browser without `:has()` gets the
+   overlay exactly as it was (the `.bulk-row` precedent).
+   The clip needs ROOM UNDER IT, and that is the `padding-bottom`. `.wordmark` is `line-height: 1`, so
+   at 16 px this box's CONTENT is exactly 16 px tall while the mark PAINTS 21. Measured in Chrome on
+   the served sheet, at this face, weight and size: the descenders of p, q, y, g and j reach 2 px below
+   the content box (`scrollHeight` 18 against `clientHeight` 16 in the DOM, before any shadow is
+   counted), and the shadow reaches 3 px below THEM — the deeper of its two layers is offset 1 px and
+   blurred 2. `overflow: hidden` clips at the PADDING box, so a bare bound cut all five of those rows
+   off: every descender tail and the whole drop shadow under the line. On this mark that shadow is not
+   decoration, it is the readability: #ECE9E2 on white is 1.21:1, so the letters are carried by the
+   dark edge under them — which is what the comment over `.embed-mark`'s own rule is about, and what a
+   width bound has no business spending. 5 px is 2 + 3 and nothing more; the box is transparent, so
+   the room costs a viewer nothing.
+   `overflow: clip` with an `overflow-clip-margin` does the same job and is not what is used here: the
+   margin is the younger half of that pair (Firefox took `clip` at 81 and the margin at 102), and an
+   engine that has one without the other clips at the padding box again, which is the bug. Padding is
+   the same room said in the part of the box model every engine already implements.
+   `TestEmbedOverlayIsBoundedOnTheHostForm` recomputes the 3 from the served `text-shadow` and holds
+   the 2 as a measured constant (nothing in Go can re-measure a font), so deepening the shadow fails
+   the test instead of quietly losing the mark's bottom. */
+.embed-mark:not(:has(.pp)) { display: inline-block; max-width: calc(80% - 12px); padding-bottom: 5px; overflow: hidden; text-overflow: ellipsis; }
+body.embed[data-playing] .embed-mark { display: none; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 860px) {
+  .upload { grid-template-columns: 1fr; grid-template-areas: "drop" "fields"; }
+  .upload-fields { border-left: 0; border-top: 1px solid var(--line); }
+}
+@media (max-width: 780px) {
+  .row { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .row.top .rl { padding-top: 0; }
+  .rs { text-align: left; justify-self: start; max-width: none; }
+  .rs:empty { display: none; }
+  /* The wizard's radio cards go one across, their state cell still at the row's end (erratum 311). */
+  .choices { grid-template-columns: 1fr; }
+  .choice .rs { text-align: right; justify-self: end; }
+  .collection .collection-clips .clip-row { grid-template-columns: 112px minmax(0, 1fr); }
+  .collection .row-actions { grid-column: 2; }
+  /* A table scrolls inside its own box on a phone; the page never scrolls sideways. */
+  .table { display: block; overflow-x: auto; white-space: nowrap; }
+}
+@media (max-width: 600px) {
+  .watch h1 { font-size: 24px; }
+  main.page { padding: 16px; }
+  header.top { padding: 10px 16px; }
+  header.top nav, header.top .bar-end { gap: 12px; }
+  header.top nav .who { max-width: 5.5rem; }
+  /* The glyph (§20 erratum 288) costs this bar 28 px — 16 of drawing and the end slot's gap — and the
+     bar is already full here. `Log out` must not answer that by wrapping to a second line: the band is
+     45 px by design and the visual pass fails a taller one. The space comes out of the username, which
+     already ellipsises and, being `overflow: hidden`, may shrink to nothing. This is the rule erratum
+     285 wrote for the instance tag, now UNSCOPED: the tag exists on no production page, the glyph is on
+     every page with a bar, and two copies of one rule differing only in a `:root[data-badge]` prefix is
+     how a stylesheet starts disagreeing with itself. A badged phone bar is covered by this line. */
+  header.top nav .linkish { white-space: nowrap; }
+  /* The instance tag (§20 erratum 285) costs the header bar about 43 px at this width, and the bar is
+     already full here: without a `Log out` that cannot wrap, the button wrapped to two lines and the
+     band grew from 45 px to 67 px (the visual pass caught it, which is what it is for). That rule is
+     now the unscoped one above, written for the glyph and covering this too (erratum 288). What is
+     left here is the floor under a LONG badge (`lab-test-abc` is twice `dev`): at the extreme the TAG
+     gives, because a bar that scrolls the page sideways on a phone is the worse failure and a wrapping
+     bar is a taller one. It is scoped to a badged instance; production's bar never renders a tag. */
+  :root[data-badge] header.top > .instance { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  /* …and on a phone the card's state cell wraps under its name, left-aligned (erratum 311). */
+  .choice { grid-template-columns: 16px minmax(0, 1fr); }
+  .choice .rs { grid-column: 2; justify-self: start; text-align: left; }
+  .clip-row { grid-template-columns: 112px minmax(0, 1fr); gap: 10px; padding: 10px; }
+  [data-bulk-ready] .clip-row { grid-template-columns: 20px 112px minmax(0, 1fr); }
+  .drop { aspect-ratio: auto; min-height: 150px; }
+  .scrubber .track { height: 56px; }
+  .trim .trim-row .btn { margin-left: 0; }
+  .libbar .stats { margin-left: 0; width: 100%; }
+  .wordmark.display { font-size: 32px; }
+  .auth, .message { margin-inline: auto; margin-block: 20px; }
+  .auth.front { margin-block-start: 56px; }
+  .facts { gap: 4px 14px; }
+  .bulk { bottom: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}

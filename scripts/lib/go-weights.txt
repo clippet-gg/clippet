@@ -1,0 +1,49 @@
+# go-weights.txt: the shard planner's seconds per (pass key, package) for scripts/lib/gocheck.sh (run 9, lane t0).
+# key TAB package TAB seconds. Keys: race, ffmpeg (a package's whole tagged pass), ffmpeg-part (the tagged pass of a
+# package that is also in the race pass: its tagged-only and raceDetector tests). A missing row is 0.4 s a test.
+# The plan reads ONLY this file, so the shards are fixed by the tree and a re-run hits the test cache. These rows are
+# gate 28b's measured seconds (16 CPUs); ffmpeg-part transcode is its ffmpeg row less the ~4 s the untagged tests take.
+# To rebalance: copy .e2e/checkpoints/go-times.txt over this file and keep this header (the next run is cold, once).
+ffmpeg	clippet/cmd/clippet	29
+ffmpeg	clippet/internal/auth	3
+ffmpeg	clippet/internal/clientip	0
+ffmpeg	clippet/internal/config	0
+ffmpeg	clippet/internal/cost	0
+ffmpeg	clippet/internal/db	52
+ffmpeg	clippet/internal/drop	0
+ffmpeg	clippet/internal/httpapi	103
+ffmpeg	clippet/internal/httpx	0
+ffmpeg	clippet/internal/ids	1
+ffmpeg	clippet/internal/lifecycle	2
+ffmpeg	clippet/internal/notify	6
+ffmpeg	clippet/internal/ratelimit	0
+ffmpeg	clippet/internal/scratch	0
+ffmpeg	clippet/internal/store	4
+ffmpeg	clippet/internal/sweeper	6
+ffmpeg	clippet/internal/transcode	139
+ffmpeg	clippet/internal/urls	1
+ffmpeg	clippet/internal/views	0
+ffmpeg	clippet/internal/web	41
+ffmpeg	clippet/internal/worker	51
+race	clippet/cmd/clippet	90
+race	clippet/internal/auth	16
+race	clippet/internal/clientip	1
+race	clippet/internal/config	2
+race	clippet/internal/cost	1
+race	clippet/internal/db	209
+race	clippet/internal/drop	1
+race	clippet/internal/httpapi	538
+race	clippet/internal/httpx	1
+race	clippet/internal/ids	2
+race	clippet/internal/lifecycle	8
+race	clippet/internal/notify	8
+race	clippet/internal/ratelimit	1
+race	clippet/internal/scratch	1
+race	clippet/internal/store	5
+race	clippet/internal/sweeper	19
+race	clippet/internal/transcode	8
+race	clippet/internal/urls	2
+race	clippet/internal/views	1
+race	clippet/internal/web	136
+race	clippet/internal/worker	157
+ffmpeg-part	clippet/internal/transcode	135

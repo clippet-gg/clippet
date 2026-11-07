@@ -1,0 +1,68 @@
+<!doctype html>
+{{- /*
+  data-badge is INSTANCE_BADGE (§20 erratum 285), and on this page it is the
+  WHOLE feature: one rule in app.css paints the overlay's span the dark
+  palette's grey instead of its green, and nothing else changes. No tag, no
+  word, no second element -- the overlay is 16 px of live text over a picture on
+  somebody else's page, and "no text beside it" (web/STYLE.md, erratum 246) is
+  older than the badge and outranks it.
+*/}}
+<html lang="en"{{with .Theme}} data-theme="{{.}}"{{end}}{{with .Badge}} data-badge="{{.}}"{{end}}>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}</title>
+{{- /*
+  The same icon the share page carries (§20 errata 103, 240, 301, 306). Without a link of
+  its own, a direct visit to an embed made the browser GET /favicon.ico, which
+  this server answers with the whole HTML 404 page -- for an icon.
+*/}}
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%22-104%20-306%201624%201624%22%3E%3Cstyle%3E.p%7Bfill%3A%2317181C%7D.s%7Bfill%3A%230E7C4F%7D%40media%28prefers-color-scheme%3Adark%29%7B.p%7Bfill%3A%23ECE9E2%7D.s%7Bfill%3A%234CD69A%7D%7D%3C%2Fstyle%3E%3Crect%20class%3D%22p%22%20x%3D%220%22%20y%3D%22230%22%20width%3D%22272%22%20height%3D%22570%22%2F%3E%3Cpath%20class%3D%22p%22%20d%3D%22M1146%2018L1418%205V800H1146Z%22%2F%3E%3Cpath%20class%3D%22p%22%20fill-rule%3D%22evenodd%22%20transform%3D%22rotate%28-9%200%20230%29%22%20d%3D%22M0%20230%20A230%20230%200%200%201%20230%200%20H1206%20A230%20230%200%200%201%201436%20230%20Z%20M378%20230%20L571%200%20L675%200%20L482%20230%20Z%20M638%20230%20L831%200%20L935%200%20L742%20230%20Z%20M898%20230%20L1091%200%20L1195%200%20L1002%20230%20Z%22%2F%3E%3Crect%20class%3D%22s%22%20x%3D%220%22%20y%3D%221000%22%20width%3D%221418%22%20height%3D%22200%22%20rx%3D%22100%22%2F%3E%3C%2Fsvg%3E">
+<meta name="theme-color" content="#000000">
+<link rel="stylesheet" href="{{.CSS}}">
+<script src="{{.JS}}" defer></script>
+</head>
+<body class="embed" data-clip-page data-embed data-clip-id="{{.ID}}" data-state="{{.State}}"{{if .ProgressURL}} data-progress-url="{{.ProgressURL}}"{{end}}>
+{{- if .Ready}}
+<video controls playsinline preload="{{.Options.Preload}}"{{if .Options.Autoplay}} autoplay{{end}}{{if .Options.Muted}} muted{{end}}{{if .Options.Loop}} loop{{end}} poster="{{.PosterURL}}" src="{{.VideoURL}}" data-view-url="{{.ViewURL}}"></video>
+{{- else}}
+<p class="embed-status" data-status>{{.StateLabel}}</p>
+{{- end}}
+{{- /*
+  The wordmark on the player (ROADMAP #36, §20 errata 246 and 287; web/STYLE.md). One
+  small overlay, top-LEFT -- top-right until 287 burned the clip's duration into the
+  top-right of every poster, where at a card's own 400 x 225 the two printed on top of
+  each other -- the same live-text lockup every page carries: visible on the
+  poster and while paused, hidden while playing (app.js sets data-playing on the body
+  from the video's own events; app.css hides it). It links to the clip's SHARE page,
+  relative -- it resolves against this document's own origin, which is ours -- with
+  target="_top" because an iframe cannot navigate itself out; the share page then
+  carries the front-door wordmark. No text beside it, no play count, no "sign up".
+  The processing/failed frame carries it too: a poster-less black box is exactly
+  where a viewer wonders whose player it is.
+  rel="noopener" is belt and braces, not protection: it severs window.opener only
+  on a link that OPENS a browsing context, and _top navigates the one that is
+  already there. It stays because the markup is pinned verbatim by the tests, the
+  E2E and erratum 246, and because a later target= would want it.
+
+  The href comes from urls.Builder (embedPage.PageURL), which is how it followed
+  the share URL to the ROOT in erratum 248 instead of staying a hand-written
+  /clips/ that would have cost every click a redirect.
+
+  Since §20 erratum 287 the overlay READS this instance's own public host
+  (the owner's call: spell the host in the baked-in part), because a
+  viewer who likes this player can type what they just read and the product's
+  name alone does not tell them where they are. On clippet.gg and any subdomain
+  of it the host CONTAINS the wordmark, so the lockup is intact -- a prefix and
+  a suffix in the same face and size, the green span still under the double p.
+  Any other host is plain text in the same style and has no span: a
+  self-hoster's domain is not this product's logo. internal/web/mark.go is the
+  whole rule.
+*/}}
+{{- if .Mark.Lockup}}
+<a class="wordmark embed-mark" href="{{.PageURL}}" target="_top" rel="noopener" aria-label="{{.Mark.Host}}">{{.Mark.Prefix}}cli<span class="pp">pp</span>et{{.Mark.Suffix}}</a>
+{{- else}}
+<a class="wordmark embed-mark" href="{{.PageURL}}" target="_top" rel="noopener">{{.Mark.Host}}</a>
+{{- end}}
+</body>
+</html>

@@ -1,0 +1,48 @@
+# pii — check.sh stage `pii` on every push to main and every pull request.
+#
+# The stage has two halves: impersonal SHAPES (home-directory paths, personal mail domains, account-id shapes),
+# which live in the public tree and always run, and the private VALUES, read from the file PII_DENY_FILE names
+# when it exists. Here that file is written from the repository secret PII_DENY. A pull request from a fork
+# gets no secrets, so it runs the public half only, and the job says so. The stage prints a path, a line and a
+# pattern number, never the matched text.
+name: pii
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pii:
+    name: pii
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Stage pii
+        shell: bash
+        env:
+          PII_DENY: ${{ secrets.PII_DENY }}
+          # A hit always fails here: the advisory mode (a tracked HANDOFF.md) is for the private checkout only.
+          PII_STRICT: "1"
+        run: |
+          set -eu
+          if [ -n "$PII_DENY" ]; then
+            umask 077
+            printf '%s\n' "$PII_DENY" > "$RUNNER_TEMP/pii-deny.txt"
+            export PII_DENY_FILE="$RUNNER_TEMP/pii-deny.txt"
+            echo "pii: both halves (the shapes, and the private values from the PII_DENY secret)"
+          else
+            echo "::notice title=pii::The PII_DENY secret is not available to this run (a fork's pull request, or the secret is unset): the public half only, the shapes"
+          fi
+          CHECK_ONLY=pii bash scripts/check.sh
+      - name: Remove the deny file
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/pii-deny.txt"

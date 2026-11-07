@@ -1,0 +1,10 @@
+{{define "content"}}
+<section class="message">
+  {{- with .Badge}}<span class="lockup">{{end}}
+  <span class="wordmark display" role="img" aria-label="clippet">cli<span class="pp">pp</span>et</span>
+  {{- with .Badge}}<span class="instance">{{.}}</span></span>{{end}}
+  <h1>Temporarily unavailable</h1>
+  <p>Clippet could not read its database just now. Try again in a moment.</p>
+  <p class="alt"><a href="/">Library</a></p>
+</section>
+{{end}}

@@ -1,0 +1,8 @@
+{
+ "note": "TEST-ONLY: a URL whose host is NOT the AAD host (the plane never seals one; the opener must still refuse it), sealed by clippet-pass forward/src/claim/seal.ts seal() (a fresh ephemeral key and IV) to the shared vector's TEST recipient; never a deployed key.",
+ "sealed_by": "forward/src/claim/seal.ts seal()",
+ "guild": "1419000000000000002",
+ "host": "name.example.test",
+ "plaintext": "https://evil.example/in/auto/ca_Zz9-_Zz9-_Zz9-_Zz9-_Zz9-_Zz9-_Zz9-_Zz9-_q1w",
+ "blob": "AQT4aDIMeimPVQvLho6D0Hv_deD0f7GsDhlnqf2B9CbMQTpJeO3RYw_7pdpBliUezbLklK8SzT8lSyCAGALG9-68OUWvEt0BO_OZpoHP2EtGi6QR8D_yyg0tOq2qvmgNCbtA4NRP_pxv_opDQxz-SOenfKkla-n4FnX-YHRbGHPQ-pLpNW5WgxUZyXUld3Lc73UhcNbIlw4jrVRMFiBqgw3paHoMw9OpQA"
+}

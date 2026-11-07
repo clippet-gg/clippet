@@ -1,0 +1,48 @@
+# release — a GitHub Release for every release tag (v<YYYY.MM.DD[.N]>), its notes taken from CHANGELOG.md:
+# the section headed `## <version>` (the tag without its `v`), up to the next `## ` heading. A tag with no
+# such section fails here rather than publishing a release without notes.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: The notes from CHANGELOG.md
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -eu
+          v=${TAG#v}
+          [ -f CHANGELOG.md ] || { echo "::error::no CHANGELOG.md at $TAG"; exit 1; }
+          awk -v v="$v" '
+            /^## / { if (on) exit; h = $2; sub(/^v/, "", h); if (h == v) { on = 1; next } }
+            on { print }
+          ' CHANGELOG.md | sed -e '/./,$!d' > "$RUNNER_TEMP/notes.md"
+          grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md" || { echo "::error::CHANGELOG.md has no '## $v' section with text in it"; exit 1; }
+          echo "notes for $v:"; cat "$RUNNER_TEMP/notes.md"
+      - name: Create the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -eu
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+          else
+            gh release create "$TAG" --verify-tag --title "${TAG#v}" --notes-file "$RUNNER_TEMP/notes.md"
+          fi

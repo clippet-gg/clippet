@@ -1,0 +1,30 @@
+# compose.tunnel.yaml — the Cloudflare NAMED tunnel as one added service (DEPLOY.md §3). Select it in `.env` once the connector token is there — three lines:
+#
+#   COMPOSE_FILE=compose.yaml:compose.gpu.yaml:compose.tunnel.yaml
+#   CLOUDFLARE_TUNNEL_TOKEN=eyJ...          (a credential; .env is gitignored)
+#   PUBLIC_BASE_URL=https://clips.example.com
+#
+# The tunnel's ingress lives in the Zero Trust dashboard (Public Hostname: clips.example.com -> HTTP
+# app:8080), so this container needs no config file and no volume: it joins the compose network and
+# reaches the app by service name, which is what TRUSTED_PROXIES=172.16.0.0/12 already covers. The
+# token travels as TUNNEL_TOKEN in the environment, never on the command line. Selecting this file
+# without the token is a loud compose error, not a tunnel that quietly never connects.
+#
+# The tag is PINNED (§20 erratum 292): a moving `latest` tag on the production ingress meant every
+# `docker compose up -d` after a registry push was an unreviewed upgrade of the one process
+# every viewer's bytes cross. Bump it by editing BOTH tunnel files (DEPLOY.md §17.1);
+# scripts/check.sh refuses a moving `latest` tag in any compose file. The multi-arch index digest, as of
+# 2026-09-16, recorded the way the Dockerfile records its bases — an anchor, not a pin:
+#   cloudflare/cloudflared:2026.8.3   sha256:51c9cefcb4569df44e1ad403ab1d3d8065aa8e84339bcfc6aee75502e1140339
+services:
+  tunnel:
+    image: cloudflare/cloudflared:2026.8.3
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env (DEPLOY.md §3)}
+    depends_on:
+      app: { condition: service_healthy }
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }

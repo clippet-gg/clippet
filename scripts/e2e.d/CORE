@@ -1,0 +1,19 @@
+# scripts/e2e.d/CORE — product files that EVERY bundle stands on (the database's shape, the clip DTO and
+# the progress route the setup's wait_ready polls, the handler graph, the middleware, the two embed.go
+# files): the setup (scripts/e2e.sh steps 1-6, 16-17) proves them on every run, filtered or not, and no one
+# bundle owns them. Since run 9's lane `pool` the old core steps 7-30 are bundles with covers lines of
+# their own, so nothing is here only because the core proved it. A change to one of these selects the
+# WHOLE suite (scripts/select.sh prints `all`). One glob per line; `#` starts a comment.
+# scripts/lib/e2e-registry.sh reads it; the E2E self-test refuses a row that matches no product file.
+# (A migration is a "shape" path as well: scripts/select.sh sends it to T2 before this list is read.)
+internal/db/db.go
+internal/db/types.go
+internal/db/migrations/**
+internal/httpapi/httpapi.go
+internal/httpapi/dto.go
+internal/httpapi/progress.go
+internal/httpx/json.go
+internal/httpx/logpath.go
+internal/httpx/middleware.go
+web/static/embed.go
+web/templates/embed.go

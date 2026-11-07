@@ -1,0 +1,21 @@
+-- 0008_poster_seconds.sql — the owner's chosen card image (ROADMAP #5).
+--
+-- One nullable column and nothing else: no index (it is only ever read
+-- through a clip already in hand), no CHECK, no default. ALTER TABLE ... ADD
+-- COLUMN is O(1) in SQLite and NULL is exactly what "nobody has chosen a
+-- frame for this clip" means, so an installation running on 0001-0004
+-- upgrades by applying this file and nothing more.
+--
+-- The value is a timestamp in SECONDS on the ORIGINAL's timeline — the same
+-- coordinate system every trim window is measured on (§20 erratum 68) and
+-- the only one that does not move under the owner. That is what lets a cut
+-- KEEP the choice: the frame the owner picked is still the same moment of
+-- the same upload after a trim, and the poster is simply re-taken from the
+-- new rendition at `poster_seconds - trim_start_ms/1000`.
+--
+-- NULL means "wherever the automatic rule put it" (§20 erratum 92's
+-- thumbnail pass), which is what every clip that exists today gets and what
+-- a clip goes back to when a trim removes the frame that was chosen. There
+-- is deliberately no backfill: the automatic choice is not a decision
+-- anybody made, and writing it here would make an accident look like one.
+ALTER TABLE clips ADD COLUMN poster_seconds REAL;  -- the owner's chosen frame, on the ORIGINAL's timeline; NULL = automatic

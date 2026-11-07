@@ -1,0 +1,56 @@
+# golangci-lint configuration (v2 format). It runs in the Dockerfile's `test`
+# stage and in scripts/check.sh's `go` stage, through the one image pinned on
+# the `test` stage's RUN line; never on the host.
+version: "2"
+
+run:
+  # The ffmpeg-tagged tests are most of internal/transcode's; no file is
+  # built only without the tag, so linting with it covers every file the
+  # default build has as well.
+  build-tags:
+    - ffmpeg
+
+linters:
+  default: none
+  enable:
+    - govet
+    - staticcheck
+    - errcheck
+    - ineffassign
+    - unused
+    - misspell
+  # gosec is off for now. Turned on whole it flags three families this code
+  # takes on purpose: math/rand where an unseeded, unguessable-enough draw is
+  # fine (jitter, sampling); file and directory modes the data directory
+  # chooses deliberately; and exec.Command running ffmpeg/ffprobe, whose
+  # arguments check.sh's stage 10 already guards. A later change enables it
+  # rule by rule.
+  settings:
+    errcheck:
+      # `_ = f()` and `_, _ = f()` are the code's spelling of "best effort,
+      # the error is not actionable here" (a Close after a failed write, a
+      # cleanup Remove). Only a call whose error is silently dropped is a
+      # finding.
+      check-blank: false
+      check-type-assertions: false
+    staticcheck:
+      # golangci-lint's default set, without the quick fixes (QF*): those are
+      # editor suggestions (De Morgan rewrites, tagged switches), not defects.
+      checks:
+        - all
+        - -ST1000
+        - -ST1003
+        - -ST1016
+        - -ST1020
+        - -ST1021
+        - -ST1022
+        - -QF*
+  exclusions:
+    presets:
+      - std-error-handling
+    rules:
+      # internal/config's test helper loadErr fails the test itself when Load
+      # succeeds; the error it returns is for the callers that read its text.
+      - linters:
+          - errcheck
+        source: '^\s*loadErr\('

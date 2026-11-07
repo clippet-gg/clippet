@@ -1,0 +1,35 @@
+-- 0020_clips_owner_source_size.sql — the index `clippet admin import` asks
+-- (ROADMAP #51, DESIGN.md §20 erratum 307).
+--
+-- `admin import <dir> --owner <name>` walks a folder of old clips through the
+-- ordinary upload path, and it is **idempotent by content**: a second run over
+-- the same folder imports nothing. What makes that true is not a table of its
+-- own. `clips.source_etag` is already the hex sha256 of the original, computed
+-- by the store while the bytes were written at ingest (0001's own comment on
+-- the column), so THE MEMORY ALREADY EXISTS — and using it rather than a
+-- private `import_seen` keeps one fact in one place. Delete a clip and its
+-- content is genuinely no longer here, so importing the file again is the
+-- right answer rather than a dangling `seen <id>` pointing at nothing.
+--
+-- What the verb needs from the database is therefore one question: **does this
+-- account already own a clip whose original is byte-for-byte this file?** It is
+-- asked SIZE FIRST, which is why this index is on (owner_id, source_size) and
+-- not on the hash:
+--
+--   * a file whose size matches nothing this account owns cannot be a
+--     duplicate, so the verb never reads it twice — it streams it straight
+--     through the upload path, and the store computes the hash on the way past
+--     for free (one read of the source, which is what a first run over a large
+--     folder has to be);
+--   * only when a size DOES match does the verb hash the local file and compare,
+--     which is one read and no writes — the second-run case, where reading
+--     every byte through SCRATCH_DIR to discover that nothing needs doing would
+--     be both slower and, on a folder larger than the working disk, a refusal.
+--
+-- An index on the hash instead would force a hash of every file on every run.
+-- The size index costs one small b-tree and is paid for by the same write that
+-- already maintains `clips_owner_created`.
+--
+-- It holds no new column and no new fact: dropping it would make the verb slow
+-- and change no answer anywhere in the product.
+CREATE INDEX clips_owner_source_size ON clips(owner_id, source_size);

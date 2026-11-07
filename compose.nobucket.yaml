@@ -1,0 +1,42 @@
+# compose.nobucket.yaml — a bucket of your OWN: the app alone, its media in an
+# external bucket (R2, B2, S3, anything S3-compatible) (ROADMAP #45, DESIGN.md
+# §20 errata 298 and 345, DEPLOY.md §35). Select it in `.env` beside the S3_*
+# lines your provider gave you:
+#
+#   COMPOSE_FILE=compose.yaml:compose.nobucket.yaml
+#
+# Until erratum 345 this file's job was to switch OFF a bundled bucket server
+# that compose.yaml started by default. There is no such server any more —
+# compose.yaml is the app alone on a folder — so its job is now the other half
+# of the same choice: it makes the stack the BUCKET flavour.
+#
+#   1. STORAGE_BACKEND defaults to `s3` here, where compose.yaml defaults it to
+#      `fs`. An existing `.env` that pointed the app at a bucket through this
+#      file and never needed a STORAGE_BACKEND line (`s3` used to be the
+#      default everywhere) therefore boots exactly as it did. A line in `.env`
+#      still wins.
+#   2. The folder bind at /media is dropped (`!override` replaces the whole
+#      volume list with the two named volumes), STORAGE_DIR falls back to empty
+#      and the two STORAGE_DIR_HOST rows are emptied, so the resolved stack is
+#      what this flavour always resolved to: no host directory is created and
+#      `admin doctor` reports no host path.
+#
+# Every S3_* still interpolates from `.env` through compose.yaml exactly as
+# documented. It is what the setup page's generated bucket blocks assign, so a
+# block is TOTAL: it assigns COMPOSE_FILE rather than telling somebody to delete
+# a line (§20 erratum 298), and clippet-pass's Pass page prints this same file
+# name for every store a Pass name accepts.
+#
+# Needs Compose v2.24+ for the !override tag. The volumes are written in the long
+# form on purpose: the short `name:/path` form under !override was measured to
+# parse as a single target on Compose v5.5.
+services:
+  app:
+    volumes: !override
+      - { type: volume, source: app_data, target: /data }
+      - { type: volume, source: app_scratch, target: /scratch }
+    environment:
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-s3}
+      STORAGE_DIR: ${STORAGE_DIR:-}
+      STORAGE_DIR_HOST: ""
+      STORAGE_DIR_HOST_SET: ""

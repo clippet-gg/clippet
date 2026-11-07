@@ -1,0 +1,12 @@
+# pii-public.txt — the PUBLIC half of check.sh's stage `pii` (scripts/lib/pii.sh): one extended regular
+# expression per line, matched CASE-SENSITIVELY over every tracked text file (a shape that takes either case
+# spells it, `[Cc]`; only the private half is matched case-insensitively). Impersonal SHAPES only — what any
+# clone could carry by accident — never a person's or an account's value (those live in PII_DENY_FILE). A hit
+# is `path:line  pattern #k (pii-public.txt)`, k the pattern's LINE NUMBER here, so a pattern keeps its number
+# when one is added below it: append, never reorder. Lines starting with `#` and blank lines are skipped.
+[Cc]:[\\/]+[Uu][Ss][Ee][Rr][Ss][\\/]+[A-Za-z]+
+/Users/[A-Za-z]+/
+/home/[A-Za-z]+/
+[A-Za-z0-9._%+-]+@([Gg]mail|GMAIL|[Oo]utlook|OUTLOOK|[Ii]cloud|ICLOUD|[Yy]ahoo|YAHOO|[Pp]roton|PROTON)\.
+ghcr\.io/[a-z0-9-]+/clippet-pass-
+([Zz]one|ZONE|[Aa]ccount|ACCOUNT)[_ .-]?[Ii][Dd][^0-9a-fA-F]{0,8}[0-9a-fA-F]{32}

@@ -1,0 +1,295 @@
+{{define "content"}}
+<section class="settings">
+  <h1>Settings</h1>
+  <p class="hint">Signed in as <strong>{{.Username}}</strong>.</p>
+
+  <!-- The look of this browser (§20 erratum 242). The three radios are a real
+       form: without JavaScript "Apply" posts to /settings/theme, which sets the
+       cookie and comes back here; with it, app.js writes the cookie itself,
+       applies the theme at once and hides the button. -->
+  <form class="panel" id="theme" data-theme-form action="/settings/theme" method="post">
+    <div class="panel-head"><h2>Look</h2><span class="hint">this browser only</span></div>
+    <div class="row">
+      <span class="rl">Theme</span>
+      <span class="rc">
+        <span class="seg" role="radiogroup" aria-label="Theme">
+          <label class="seg-opt"><input type="radio" name="theme" value="system"{{if eq .Theme ""}} checked{{end}} data-theme-pick><span>System</span></label>
+          <label class="seg-opt"><input type="radio" name="theme" value="light"{{if eq .Theme "light"}} checked{{end}} data-theme-pick><span>Light</span></label>
+          <label class="seg-opt"><input type="radio" name="theme" value="dark"{{if eq .Theme "dark"}} checked{{end}} data-theme-pick><span>Dark</span></label>
+        </span>
+        <button type="submit" class="btn small" data-theme-apply>Apply</button>
+      </span>
+      <span class="rs ok" data-theme-status hidden>saved</span>
+    </div>
+  </form>
+
+  <form class="panel" id="password" data-password-form action="/api/auth/password" method="post">
+    <div class="panel-head"><h2>Password</h2><span class="hint">changing it signs out every other browser; this one stays</span></div>
+    <div class="row">
+      <span class="rl"><label for="current-password">Current</label></span>
+      <span class="rc"><input id="current-password" type="password" name="current_password" autocomplete="current-password" required minlength="8" maxlength="72"></span>
+      <span class="rs"></span>
+    </div>
+    <div class="row">
+      <span class="rl"><label for="new-password">New</label></span>
+      <span class="rc"><input id="new-password" type="password" name="new_password" autocomplete="new-password" required minlength="8" maxlength="72"></span>
+      <span class="rs">8–72 characters</span>
+    </div>
+    <noscript><p class="hint">Changing the password needs JavaScript in this browser. Whoever runs {{.InboundHost}} can change it from the CLI.</p></noscript>
+    <div class="row">
+      <span class="rl"></span>
+      <span class="rc"><button type="submit" class="btn">Change password</button></span>
+      <span class="rs">no reset — whoever runs {{.InboundHost}} changes it from the CLI</span>
+    </div>
+    <p class="ok" data-password-ok hidden></p>
+    <p class="error" data-password-error hidden></p>
+  </form>
+
+  <div class="panel" id="sessions">
+    <div class="panel-head"><h2>Signed-in browsers</h2><span class="hint">every session that can act as you right now · none lives past {{.MaxSessionAge}}</span></div>
+    {{- if .SessionsError}}
+    <p class="error">{{.SessionsError}}</p>
+    {{- else}}
+    <table class="table session-list">
+      <thead><tr><th>Started</th><th>Last seen</th><th>Expires</th><th>Browser</th></tr></thead>
+      <tbody data-session-list>
+        {{- range .Sessions}}
+        <tr{{if .Current}} class="current"{{end}}><td>{{.Started}}{{if .Current}} <span class="this">this browser</span>{{end}}</td><td class="m">{{.LastSeen}}</td><td class="m">{{.Expires}}</td><td class="ua">{{.UserAgent}}</td></tr>
+        {{- end}}
+      </tbody>
+    </table>
+    <div class="row">
+      <span class="rl"></span>
+      <span class="rc"><button type="button" class="btn danger" data-logout-others data-confirm-text="Really sign the others out">Sign out everywhere else</button></span>
+      <span class="rs" data-logout-others-hint hidden>click again to confirm</span>
+    </div>
+    <p class="ok" data-sessions-ok hidden></p>
+    <p class="error" data-sessions-error hidden></p>
+    {{- end}}
+  </div>
+
+  {{- if .Discord.Configured}}
+  <!-- Sign in with Discord (ROADMAP #44, §20 erratum 302). The same question as
+       the sessions list above — who can act as me — so it sits right after it.
+       A link is a second key to THIS account and nothing else: no global
+       users, nothing cross-instance, no guild anything. Linking needs the
+       password (erratum 108's reason: an unlocked laptop must not silently
+       become a permanent takeover); unlinking removes a key and needs none.
+       app.js POSTs the password and navigates to the URL it gets back — a
+       script navigation, not a form submission, for CSP's form-action. -->
+  <div class="panel" id="discord">
+    <div class="panel-head"><h2>Discord</h2><span class="hint">a linked Discord account can sign in here without the password; it never creates an account</span></div>
+    {{- if .Discord.Linked}}
+    <div class="row">
+      <span class="rl">Account</span>
+      <span class="rc">{{if .Discord.Username}}linked as <strong>{{.Discord.Username}}</strong>{{else}}linked{{end}}{{with .Discord.Since}} · since {{.}}{{end}} <button type="button" class="btn danger small" data-discord-unlink data-confirm-text="Really unlink">Unlink</button></span>
+      <span class="rs" data-discord-unlink-hint hidden>click again to confirm</span>
+    </div>
+    {{- else}}
+    <form data-discord-link action="/api/auth/discord" method="post">
+      <div class="row">
+        <span class="rl"><label for="dl-password">Current password</label></span>
+        <span class="rc"><input id="dl-password" type="password" name="current_password" autocomplete="current-password" required minlength="8" maxlength="72"></span>
+        <span class="rs"></span>
+      </div>
+      <noscript><p class="hint">Linking needs JavaScript in this browser. Whoever runs {{.InboundHost}} can link it from the CLI.</p></noscript>
+      <div class="row">
+        <span class="rl">Account</span>
+        <span class="rc"><button type="submit" class="btn">Link Discord</button></span>
+        <span class="rs">not linked</span>
+      </div>
+    </form>
+    {{- end}}
+    {{- if .Discord.Notice}}
+    <p class="{{if .Discord.NoticeOK}}ok{{else}}error{{end}} pad" data-discord-notice>{{.Discord.Notice}}</p>
+    {{- end}}
+    <p class="error pad" data-discord-error hidden></p>
+  </div>
+  {{- end}}
+
+  <div class="panel" id="defaults" data-defaults data-defaults-url="{{.Defaults.APIURL}}">
+    <div class="panel-head"><h2>Upload defaults</h2><span class="hint">what your uploads get when they say nothing; anything an upload sends wins</span></div>
+    <div class="row">
+      <span class="rl"><label for="d-ttl">Delete after</label></span>
+      <span class="rc">
+        <select id="d-ttl" name="default_ttl_days" data-defaults-ttl>
+          <option value=""{{if eq .Defaults.SelectedTTL ""}} selected="selected"{{end}}>server default · {{.Defaults.InstanceTTLLabel}}</option>
+          {{- range .Defaults.TTLOptions}}
+          <option value="{{.Value}}"{{if eq $.Defaults.SelectedTTL .Value}} selected="selected"{{end}}>{{.Label}}</option>
+          {{- end}}
+        </select>
+      </span>
+      <span class="rs"></span>
+    </div>
+    <div class="row">
+      <span class="rl">Visibility</span>
+      <span class="rc"><label class="switch"><input type="checkbox" data-defaults-unlisted{{if .Defaults.Unlisted}} checked="checked"{{end}}><i></i>Unlisted by default</label></span>
+      <span class="rs"></span>
+    </div>
+    <!-- The default link grammar (ROADMAP #35, §20 errata 250 and 264). Two options
+         and no third: every account has one, and an upload that names neither gets
+         this. The hint is one EXAMPLE of each grammar on this instance's own host
+         (erratum 264), rendered by the server so the host is the configured one. The
+         word list's credit follows it — an attribution belongs beside the control
+         that spends it, and it is a credit rather than copy about the choice. -->
+    <div class="row top">
+      <span class="rl">Links</span>
+      <span class="rc">
+        <span class="seg" role="radiogroup" aria-label="Link style">
+          <label class="seg-opt"><input type="radio" name="default_link_style" value="compact"{{if ne .Defaults.LinkStyle "memorable"}} checked{{end}} data-defaults-link><span>Compact</span></label>
+          <label class="seg-opt"><input type="radio" name="default_link_style" value="memorable"{{if eq .Defaults.LinkStyle "memorable"}} checked{{end}} data-defaults-link><span>Memorable</span></label>
+        </span>
+        <span class="hint">Compact: <code>{{.Defaults.LinkExamples.Compact}}</code> · Memorable: <code>{{.Defaults.LinkExamples.Memorable}}</code>. Word list: EFF large wordlist, CC BY 3.0.</span>
+      </span>
+      <span class="rs"></span>
+    </div>
+    <div class="row">
+      <span class="rl"></span>
+      <span class="rc"><button type="button" class="btn" data-defaults-save>Save defaults</button></span>
+      <span class="rs ok" data-defaults-status hidden></span>
+    </div>
+    <p class="error" data-defaults-error hidden></p>
+  </div>
+
+  {{- if and .Storage.Show .Storage.OwnerOnly}}
+  <!-- The Storage panel is the instance owner's (§20 erratum 349): another account reads its head
+       and one sentence, and no figure — none is computed for it. -->
+  <div class="panel" id="storage">
+    <div class="panel-head"><h2>Storage</h2></div>
+    <p class="hint pad" data-storage-owner-only>{{.Storage.OwnerOnly}}</p>
+  </div>
+  {{- else if .Storage.Show}}
+  <!-- What this instance costs, and how much room is left in it (ROADMAP #39 and #40,
+       §20 errata 270 and 277). Instance-wide and read-only: the same numbers /healthz and
+       `admin stats` print, in the row grammar, with the cost estimate in the state column.
+       An ESTIMATE — the word is in the head and an approximation sign is on every figure —
+       and never a per-account number. With no price configured the state cell reads
+       `unpriced`, never a 0.00; with STORAGE_PRICING=local it reads 0.00, because a local
+       disk has no provider bill and that IS the number. E2E step 87 asserts the estimate
+       sign appears on no unpriced page, so keep it out of this comment (html/template
+       elides comments, but the pin is cheap to keep true). -->
+  <div class="panel" id="storage">
+    <!-- The one link to the setup wizard (ROADMAP #45, §20 erratum 297). A LINK, in the
+         panel head, beside the sentence about where the money comes from — ink with the
+         marker stroke like every other link, never a button and never a call to action:
+         this is the panel somebody opens when they are wondering about storage, and it
+         is the only surface in the product that points at /setup. -->
+    <div class="panel-head"><h2>Storage</h2><span class="hint">this whole instance · {{.Storage.Source}}{{if .SetupWizard}} · <a href="/setup">where clips live</a>{{end}}</span></div>
+    {{- if .Storage.Quota}}
+    <!-- The quota is the HEADLINE (§20 erratum 277): the first row, because "is there
+         room" is the question somebody opens this panel with, and the money rows below
+         answer a different one. Past the line the state cell is red — web/STYLE.md's law
+         says red is LOSS, and a quota reached is the loss of the next upload. The
+         `budget` row erratum 270 shipped is MERGED into this one: no pair of numbers is
+         printed twice. -->
+    <div class="row" data-storage-quota>
+      <span class="rl">quota</span>
+      <span class="rc"><span class="mono">{{.Storage.QuotaStored}}</span> of <span class="mono">{{.Storage.QuotaLimit}}</span></span>
+      <span class="rs{{if .Storage.QuotaFull}} danger{{end}}">{{.Storage.QuotaAt}}</span>
+    </div>
+    {{- end}}
+    <div class="row">
+      <span class="rl">stored</span>
+      <span class="rc"><span class="mono">{{.Storage.Stored}}</span></span>
+      <span class="rs">{{.Storage.StoredCost}}</span>
+    </div>
+    <!-- The served figure carries a qualifier only when this instance did not WRITE the
+         bytes it counted: with MEDIA_DELIVERY=redirect the media leaves the bucket
+         directly and the counter is charged each redirect's whole object, so the row
+         reads `estimated (redirect)` beside the number rather than letting an upper
+         bound pass for a measurement (§20 erratum 278). Plain text beside the mono
+         figure, exactly as the quota row's "of" is. -->
+    <div class="row">
+      <span class="rl">served this month</span>
+      <span class="rc"><span class="mono">{{.Storage.Served}}</span>{{with .Storage.ServedNote}} {{.}}{{end}}</span>
+      <span class="rs">{{.Storage.ServedCost}}</span>
+    </div>
+    {{- if .Storage.Drop}}
+    <!-- The drop folder (ROADMAP #42, §20 erratum 296), shown only when it is on. The
+         OWNER and never the directory: a path is the operator's disk layout, which even
+         the instance owner reads elsewhere (admin doctor). -->
+    <div class="row" data-storage-drop>
+      <span class="rl">drop folder</span>
+      <span class="rc">a video left in this instance's media folder becomes a clip owned by <span class="mono">{{.Storage.DropOwner}}</span></span>
+      <span class="rs">on</span>
+    </div>
+    {{- end}}
+  </div>
+  {{- end}}
+
+  <div class="panel" id="tokens">
+    <div class="panel-head"><h2>API tokens</h2><span class="hint">a token lets a capture tool upload as you (POST /api/upload); it cannot change your password or make another token</span></div>
+    <form data-token-mint action="/api/auth/tokens" method="post">
+      <!-- The kind is classified FIRST (§20 erratum 322): a capture token, or an inbound URL —
+           a `ci_` secret in the path of POST /in/{token}, minted with the scope inbound alone.
+           The hint shows one example of each shape, on this instance's own host (erratum 264).
+           The words the other fields switch to live here, beside the words they replace.
+           A Clippet Auto URL (§20 erratum 324) — a `ca_` secret in the path of POST /in/auto/{token},
+           the scope autofetch alone — is drawn only where it can work: on an instance that answers the
+           official bot, the only way Clippet Auto reaches a box. The API and the shell mint it anywhere. -->
+      <div class="row top">
+        <span class="rl">Kind</span>
+        <span class="rc">
+          <span class="seg" role="radiogroup" aria-label="Kind">
+            <label class="seg-opt"><input type="radio" name="kind" value="token" checked data-token-kind><span>Token</span></label>
+            <label class="seg-opt"><input type="radio" name="kind" value="inbound" data-token-kind><span>Inbound URL</span></label>
+            {{- if .AutoFetch}}
+            <label class="seg-opt"><input type="radio" name="kind" value="autofetch" data-token-kind><span>Clippet Auto URL</span></label>
+            {{- end}}
+          </span>
+          <span class="hint">Token: <code>Bearer ck_…</code> · Inbound URL: <code>{{.InboundHost}}/in/ci_…</code>{{if .AutoFetch}} · Clippet Auto URL: <code>{{.InboundHost}}/in/auto/ca_…</code>{{end}}</span>
+        </span>
+        <span class="rs"></span>
+      </div>
+      <div class="row top">
+        <span class="rl"><label for="t-name">Name</label></span>
+        <!-- autocomplete="off": this is a label for a token ("ShareX on desktop"), not a value
+             any browser profile has or should offer. Without it Chrome's audit flags the field. -->
+        <span class="rc"><input id="t-name" type="text" name="name" maxlength="64" autocomplete="off" placeholder="ShareX on desktop" data-placeholder-inbound="Stream deck" data-placeholder-autofetch="the server it is for" required></span>
+        <span class="rs"></span>
+      </div>
+      <div class="row top" data-token-scopes>
+        <span class="rl">What it may do</span>
+        <span class="rc">
+          <div class="scopes">
+            {{- range .Scopes}}
+            <label class="check scope"><input type="checkbox" name="scopes" value="{{.Value}}"{{if .Checked}} checked{{end}}> {{.Label}} <span class="hint">{{.Hint}}</span></label>
+            {{- end}}
+          </div>
+        </span>
+        <span class="rs"></span>
+      </div>
+      <noscript><p class="hint">Making a token needs JavaScript in this browser.</p></noscript>
+      <div class="row">
+        <span class="rl"></span>
+        <span class="rc"><button type="submit" class="btn" data-token-submit data-label-inbound="Create URL" data-label-autofetch="Create URL">Create token</button></span>
+        <span class="rs"></span>
+      </div>
+      <p class="error" data-error hidden></p>
+    </form>
+    <div class="token-new" data-new-token hidden>
+      <p class="once" data-once data-once-inbound="Copy this URL now — it is shown only once. Anyone who has it can upload as you." data-once-autofetch="Copy this URL now — it is shown only once. It goes into /settings → Clippet Auto in your Discord server. Anyone who has it can upload Discord videos as you.">Copy this token now — it is shown only once.</p>
+      <code data-new-token-value></code>
+      <div class="inline">
+        <button type="button" class="btn small" data-copy-token>Copy</button>
+        <span class="sxcu" data-sxcu hidden>
+          <a class="btn small" data-sxcu-download download="clippet.sxcu">Download clippet.sxcu</a>
+          <span class="hint">ShareX: double-click the file. It carries this token and is built in your browser.</span>
+        </span>
+        <span class="copied" data-copied hidden>copied</span>
+      </div>
+    </div>
+    <table class="table token-list">
+      <thead><tr><th>Name</th><th>Prefix</th><th>Scopes</th><th>Created</th><th>Last used</th><th></th></tr></thead>
+      <tbody data-token-list>
+        {{- range .Tokens}}
+        <tr data-token-id="{{.ID}}"><td>{{.Name}}</td><td class="m"><code>{{.Lead}}{{.Prefix}}…</code></td><td class="m">{{.Scopes}}</td><td class="m">{{.Created}}</td><td class="m">{{.LastUsed}}</td><td><button type="button" class="btn danger small" data-revoke data-confirm-text="Really revoke">Revoke</button></td></tr>
+        {{- end}}
+      </tbody>
+    </table>
+    <p class="hint pad" data-revoke-hint hidden>click Revoke again to confirm — tools using it stop at once</p>
+    <p class="error pad" data-token-error hidden></p>
+    <p class="empty pad" data-empty{{if .Tokens}} hidden="hidden"{{end}}>No tokens yet.</p>
+  </div>
+</section>
+{{end}}

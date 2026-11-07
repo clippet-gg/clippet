@@ -1,0 +1,358 @@
+# compose.yaml (Phase 1, DESIGN.md §2). All tags pinned. `docker compose up -d --build` builds ./Dockerfile.
+# ONE service since §20 erratum 345: the app, keeping the media in a FOLDER on this machine
+# (STORAGE_BACKEND=fs, DEPLOY.md §32). There is no bundled object-storage server any more: the
+# images this file used to pull for one were withdrawn by their publisher (run 22). A bucket of your
+# own (R2, B2, S3, anything S3-compatible) is the opt-in: `compose.nobucket.yaml` plus the S3_*
+# lines in `.env` (DEPLOY.md §7, §35), and it is what unlocks MEDIA_DELIVERY=redirect (§33), the
+# database snapshot in the bucket and `admin restore --from-store` (§15).
+name: clippet
+services:
+  app:
+    # VERSION reaches the Dockerfile's `ARG VERSION` and is baked into the
+    # binary as `-X main.version` (§20 erratum 104). Without it every local
+    # build reported "dev", so §16's upgrade checklist had no way to confirm
+    # from the outside that the new binary is the one running. Set
+    # CLIPPET_VERSION in .env to whatever names the revision you deployed --
+    # `git describe --always --dirty` is the obvious value -- and /healthz then
+    # reports it.
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${CLIPPET_VERSION:-dev}
+        # The commit that VERSION names (§20 erratum 303), baked in as
+        # `-X main.commit` beside it and published by GET /api/instance. Empty
+        # is the default and reads as "this build does not say"; the release
+        # runbook (DEPLOY.md §17.4) sets CLIPPET_COMMIT from
+        # `git rev-parse HEAD`, and scripts/e2e.sh exports it for every stack
+        # it builds. Read at BUILD time, like VERSION.
+        COMMIT: ${CLIPPET_COMMIT:-}
+    image: ${CLIPPET_IMAGE:-clippet-app:local}   # overridable so a side-by-side lane stack (worktree + own project) builds its own tag
+    restart: unless-stopped
+    # Resource ceilings (§20 erratum 104). Nothing here had a memory or CPU
+    # limit, while one process runs the HTTP server, the sweeper AND every
+    # ffmpeg -- so an encode that overshot took the whole instance with it
+    # rather than one job. These are the v2 `mem_limit`/`cpus` keys, which
+    # `docker compose up` applies on a single host (the `deploy.resources`
+    # block is Swarm-only and is silently ignored here, which is worse than no
+    # limit at all). The defaults are the smallest box this stack is happy on;
+    # DEPLOY.md §7 has the measured per-slot figure and the rule of thumb
+    # TRANSCODE_CONCURRENCY <= min(cores, RAM_GiB).
+    #
+    # APP_CPUS MUST NOT EXCEED THE HOST'S CORE COUNT. Unlike mem_limit -- which
+    # the daemon accepts above physical RAM -- `cpus` above the core count is a
+    # hard CREATE error ("range of CPUs is from 0.01 to N, as there are only N
+    # CPUs available"), so the app container is never built and
+    # `restart: unless-stopped` cannot help. Hence the 1.0 default: it is the
+    # documented one core per slot for the default TRANSCODE_CONCURRENCY=1 and
+    # it is safe on a 1-vCPU VPS. Raise it with TRANSCODE_CONCURRENCY.
+    mem_limit: ${APP_MEM_LIMIT:-2g}
+    cpus: ${APP_CPUS:-1.0}
+    # LOOPBACK BY DEFAULT (§20 erratum 96). Host 8481 (8480 was the retired fork's), bound to
+    # 127.0.0.1 so nothing off this machine reaches the app except through whatever proxy you
+    # put in front of it — which is what makes TRUSTED_PROXIES safe (DEPLOY.md §4). Widening it
+    # is one .env line, `CLIPPET_PUBLISH=0.0.0.0:8481`, and must not be combined with a
+    # non-empty TRUSTED_PROXIES: a reachable port plus a trusted prefix means any caller can
+    # spoof X-Real-IP past every per-IP limit.
+    ports: ["${CLIPPET_PUBLISH:-127.0.0.1:8481}:8080"]
+    # EVERY DESIGN.md §4 variable is interpolated with its documented default, so `.env` is the
+    # single place an operator sets anything (§20 erratum 57). With no .env the resolved values are
+    # byte-for-byte the Phase 1 dev stack. SESSION_SECRET is deliberately absent (§4: nothing is
+    # signed, so there is no secret) — do not add it.
+    environment:
+      # Container-internal wiring: these three are coupled to `ports`, the named volumes and the
+      # healthcheck below. Interpolated for completeness; changing them needs matching edits here.
+      CLIPPET_LISTEN: "${CLIPPET_LISTEN:-:8080}"
+      DATA_DIR: ${DATA_DIR:-/data}
+      SCRATCH_DIR: ${SCRATCH_DIR:-/scratch}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8481}
+      # Every S3_* value interpolates, so .env can point the app at a bucket of
+      # your own (§4 provider matrix, DEPLOY.md §7). The four that name a bucket
+      # default to EMPTY since §20 erratum 345: on the default STORAGE_BACKEND=fs
+      # any one of them is a boot error naming itself, and on `s3` an empty one
+      # is a boot error too — there is no bundled server to fall back to any
+      # more, so an empty `S3_ACCESS_KEY=` no longer boots on a published pair.
+      # S3_REGION and S3_FORCE_PATH_STYLE keep the values every earlier stack
+      # resolved to, so an existing .env behaves exactly as it did.
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+      S3_KEY_PREFIX: ${S3_KEY_PREFIX:-}
+      # The DESTINATION bucket of `admin storage migrate --to s3` on a bucket
+      # instance (DEPLOY.md §32.3, §20 erratum 335): migrate only — `serve` never
+      # reads them. Empty is unset; the `docker compose exec -T -e …` form sets
+      # them for one run without a .env line.
+      # The seven rows are here for the config check (§20 erratum 292: a compose row per variable config reads) and are read by `admin storage migrate` alone.
+      MIGRATE_S3_ENDPOINT: ${MIGRATE_S3_ENDPOINT:-}
+      MIGRATE_S3_REGION: ${MIGRATE_S3_REGION:-}
+      MIGRATE_S3_BUCKET: ${MIGRATE_S3_BUCKET:-}
+      MIGRATE_S3_ACCESS_KEY: ${MIGRATE_S3_ACCESS_KEY:-}
+      MIGRATE_S3_SECRET_KEY: ${MIGRATE_S3_SECRET_KEY:-}
+      MIGRATE_S3_FORCE_PATH_STYLE: ${MIGRATE_S3_FORCE_PATH_STYLE:-}
+      MIGRATE_S3_KEY_PREFIX: ${MIGRATE_S3_KEY_PREFIX:-}
+      # WHERE the media lives: a plain directory (the default since §20 erratum 345,
+      # ROADMAP #37, DEPLOY.md §32) or a bucket of your own (`compose.nobucket.yaml`
+      # sets `s3` as ITS default and drops the folder bind below). The folder is the
+      # host directory bound at /media in `volumes:` — STORAGE_DIR_HOST, or your own
+      # Videos folder when it is unset (erratum 295) — and the two informational rows
+      # after STORAGE_DIR tell `admin doctor`'s `store` row which host directory that
+      # is and whether you named it; the app never joins a path from either.
+      # STORAGE_BACKEND passes through UNSET on purpose: the app then reads the
+      # four S3_* — none set is the folder store, any set is a bucket — so a
+      # `.env` written before erratum 345 (a bucket, no STORAGE_BACKEND line) keeps
+      # its bucket on the next rebuild instead of refusing to boot.
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-}
+      STORAGE_DIR: ${STORAGE_DIR:-/media}
+      STORAGE_DIR_HOST: "${STORAGE_DIR_HOST:-${HOME:-${USERPROFILE}}/Videos/clippet}"
+      STORAGE_DIR_HOST_SET: "${STORAGE_DIR_HOST:+1}"
+      # The DROP FOLDER (ROADMAP #42 (b), DEPLOY.md §34): a video left at the ROOT of
+      # STORAGE_DIR becomes a clip owned by the ONE account named here. Empty — the
+      # default, and every instance before it — means nothing at the root is ever read.
+      # It runs on EITHER backend since §20 erratum 296 (m) — what it needs is a folder,
+      # which `s3` can have too (the clips still go to the bucket) — so naming an owner
+      # with no STORAGE_DIR is the boot error, not naming one on `s3`. A name that
+      # matches no account is a boot error too, because a folder watched for nobody is
+      # the one state it must not be in.
+      DROP_FOLDER_OWNER: ${DROP_FOLDER_OWNER:-}
+      # Timed backups of the DATABASE (DEPLOY.md §15.6). Off unless BACKUP_EVERY and
+      # BACKUP_DIR are both set; one without the other is a boot error. BACKUP_DIR is a
+      # directory inside the container that already exists: the app never creates it.
+      # BACKUP_KEEP is how many snapshots stay (30 when empty).
+      BACKUP_EVERY: ${BACKUP_EVERY:-}
+      BACKUP_DIR: ${BACKUP_DIR:-}
+      BACKUP_KEEP: ${BACKUP_KEEP:-}
+      # The database snapshot that follows the clips into the store (DEPLOY.md §15).
+      # On by default on both backends (empty = on): the bucket, or on fs the media
+      # folder's own _clippet/; at most one write of <S3_KEY_PREFIX>_clippet/db.sqlite
+      # per DB_SNAPSHOT_EVERY (10m when empty).
+      DB_SNAPSHOT: ${DB_SNAPSHOT:-}
+      DB_SNAPSHOT_EVERY: ${DB_SNAPSHOT_EVERY:-}
+      STORAGE_OP_TIMEOUT: ${STORAGE_OP_TIMEOUT:-30s}
+      STORAGE_IDLE_TIMEOUT: ${STORAGE_IDLE_TIMEOUT:-2m}
+      STORAGE_TRANSFER_MAX: ${STORAGE_TRANSFER_MAX:-6h}
+      # How many 16 MiB parts one large upload to the bucket sends at once (DEPLOY.md §7;
+      # DESIGN §20 erratum 337). Memory: about this many x 16 MiB per running upload; 1 is
+      # the old one-part-at-a-time path. S3 only.
+      STORAGE_UPLOAD_THREADS: ${STORAGE_UPLOAD_THREADS:-6}
+      # The BOOT ping loop's shape (DEPLOY.md §7): how many times the app asks the store
+      # before it logs `storage unreachable; serving degraded`, and the pause between asks.
+      # Both were documented, both were read by internal/config, and NEITHER reached the
+      # container until §20 erratum 292 — the one omission in this block, which the
+      # check.sh stage that erratum adds now refuses to let happen again.
+      STORAGE_PING_ATTEMPTS: ${STORAGE_PING_ATTEMPTS:-10}
+      STORAGE_PING_INTERVAL: ${STORAGE_PING_INTERVAL:-3s}
+      # HOW the media is delivered, which is a different question from where it lives
+      # (ROADMAP #34 lane F, DEPLOY.md §33). `proxy` — the default — is byte-for-byte
+      # what every version before it did: the app streams every media byte itself.
+      # `redirect` answers the same URLs, after the same gates, with a 302 to a freshly
+      # presigned link on the bucket's own origin, so no video byte crosses whatever
+      # sits in front of the app. It needs a bucket: on STORAGE_BACKEND=fs it is a boot
+      # error. MEDIA_PRESIGN_ENDPOINT is the origin VIEWERS reach the bucket at and
+      # defaults to S3_ENDPOINT — set it only when the app reaches the bucket by a
+      # name viewers cannot (a server on the compose network or the LAN). MEDIA_PRESIGN_TTL
+      # is passed EMPTY unless .env sets it (the app's own default is 1h): a value here
+      # would read as "set" to the boot line and doctor's `media` row, which say a
+      # MEDIA_PRESIGN_* variable set under `proxy` is ignored (DESIGN.md §20 erratum 278 (e)).
+      MEDIA_DELIVERY: ${MEDIA_DELIVERY:-proxy}
+      MEDIA_PRESIGN_TTL: ${MEDIA_PRESIGN_TTL:-}
+      MEDIA_PRESIGN_ENDPOINT: ${MEDIA_PRESIGN_ENDPOINT:-}
+      DEFAULT_CLIP_TTL: ${DEFAULT_CLIP_TTL:-never}
+      SWEEP_INTERVAL: ${SWEEP_INTERVAL:-60s}
+      SWEEP_GRACE: ${SWEEP_GRACE:-1h}
+      SWEEP_BATCH: ${SWEEP_BATCH:-50}
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-4294967296}
+      SCRATCH_MIN_FREE_BYTES: ${SCRATCH_MIN_FREE_BYTES:-536870912}
+      UPLOAD_CHUNK_BYTES: ${UPLOAD_CHUNK_BYTES:-52428800}
+      # An ADVISORY storage line by default, never a cap (DEPLOY.md §25). 0 = off; no
+      # upload is ever refused because of it, unless STORAGE_BUDGET_HARD is 1 — the one
+      # opt-in that makes the same line a cap (a new clip gets 507 at or past it). `1`
+      # with no budget set is a boot error, not a refuse-everything instance.
+      STORAGE_BUDGET_BYTES: ${STORAGE_BUDGET_BYTES:-0}
+      STORAGE_BUDGET_HARD: ${STORAGE_BUDGET_HARD:-0}
+      # What your provider charges you, in your own currency per GB (DEPLOY.md §31).
+      # Both are optional and pass through EMPTY by default: with neither set there is
+      # no cost line anywhere — absent, never a 0.00. Nothing is ever asked of a provider.
+      # STORAGE_PRICING names a dated PRESET instead (local|r2|b2|s3, DEPLOY.md §31.5):
+      # a table of list prices inside the image, read by a person on the date it carries
+      # and never fetched. A typed price above overrides its half of the preset.
+      STORAGE_PRICE_PER_GB_MONTH: ${STORAGE_PRICE_PER_GB_MONTH:-}
+      EGRESS_PRICE_PER_GB: ${EGRESS_PRICE_PER_GB:-}
+      STORAGE_PRICING: ${STORAGE_PRICING:-}
+      # How long POST /api/upload holds its 201 waiting for the clip's CARD to work, so the
+      # link a capture tool pastes unfurls as a player card (DEPLOY.md §9, §27). 0 = off;
+      # max 60s. The per-request `wait` field is gone: this is the only knob (§20 erratum 212).
+      CAPTURE_READY_WAIT: ${CAPTURE_READY_WAIT:-30s}
+      TRANSCODE_CONCURRENCY: ${TRANSCODE_CONCURRENCY:-1}
+      TRANSCODE_PRESET: ${TRANSCODE_PRESET:-veryfast}
+      TRANSCODE_CRF: ${TRANSCODE_CRF:-23}
+      TRANSCODE_MAX_FPS: ${TRANSCODE_MAX_FPS:-60}
+      TRANSCODE_MAX_WIDTH: ${TRANSCODE_MAX_WIDTH:-1280}
+      TRANSCODE_MAX_HEIGHT: ${TRANSCODE_MAX_HEIGHT:-720}
+      TRANSCODE_STALL_TIMEOUT: ${TRANSCODE_STALL_TIMEOUT:-5m}
+      TRANSCODE_HARD_TIMEOUT: ${TRANSCODE_HARD_TIMEOUT:-6h}
+      TRANSCODE_MAX_ATTEMPTS: ${TRANSCODE_MAX_ATTEMPTS:-3}
+      TRANSCODE_MAX_TRANSIENT: ${TRANSCODE_MAX_TRANSIENT:-10}
+      # How long a job may sit `running` with no worker before the app repairs it
+      # itself (DEPLOY.md §24.6). Interpolated EMPTY on purpose: its default is
+      # TRANSCODE_HARD_TIMEOUT + 15m, i.e. another variable, so a literal here
+      # could not stay equal to config.go's default (§20 errata 57, 230). Empty =
+      # unset = that derived default; 0 switches the repair off.
+      JOBS_UNSTICK_AFTER: ${JOBS_UNSTICK_AFTER:-}
+      # A VBV ceiling on the MAIN rendition, in BITS per second; 0 = off and
+      # CRF alone decides the bitrate, exactly as it always has (DEPLOY §21).
+      TRANSCODE_MAX_BITRATE: ${TRANSCODE_MAX_BITRATE:-0}
+      # The size at or above which a clip also gets a dedicated, smaller LIGHT
+      # copy for its card (/light.mp4, /social.mp4) — a file above 30 fps or
+      # larger than 1280x720 gets one whatever its size. 0 = the feature off
+      # (DEPLOY §21, §27).
+      SOCIAL_MAX_BYTES: ${SOCIAL_MAX_BYTES:-26214400}
+      # h264 | av1 — the encoder for the FULL tier, the stored copy of a source
+      # no browser can play directly. h264 plays everywhere; av1 halves the
+      # bytes and wants decoder hardware from about 2019. The card's LIGHT copy
+      # is h264 whatever this says (DEPLOY §27).
+      FULL_CODEC: ${FULL_CODEC:-h264}
+      # How many threads ONE encode may use. 0 = auto, and auto reads this
+      # container's own CPU quota, because `nproc` inside a `cpus: 1.0` container
+      # still reports every core the host has — x264 then sized its pool for
+      # sixteen and was throttled to one, measured 25 % slower (DEPLOY §27,
+      # §20 erratum 215). The boot line prints the number it resolved.
+      TRANSCODE_THREADS: ${TRANSCODE_THREADS:-0}
+      # Empty = the CPU argv, which is what every install without a graphics card
+      # runs. `cuda` selects the NVENC path and needs the `gpu` image (the
+      # `compose.gpu.yaml` override, §20 erratum 247); on the ordinary image it is a BOOT ERROR,
+      # because the static ffmpeg has no NVENC encoder at all (DEPLOY §27,
+      # §20 erratum 216).
+      TRANSCODE_HWACCEL: ${TRANSCODE_HWACCEL:-}
+      # The one small semi-transparent line burned into the card's LIGHT copy,
+      # naming the preview quality and the real one: `{light}` and `{best}` are
+      # substituted with "720p30" / "1440p60". `off` removes it. It is on NOTHING
+      # else — never the Original, the Full, a poster, a GIF or a download
+      # (DEPLOY §27, §20 erratum 214).
+      LIGHT_TAG_TEXT: ${LIGHT_TAG_TEXT:-{light} preview · {best} on Clippet}
+      FFMPEG_PATH: ${FFMPEG_PATH:-ffmpeg}
+      FFPROBE_PATH: ${FFPROBE_PATH:-ffprobe}
+      SESSION_TTL: ${SESSION_TTL:-720h}
+      # The ceiling on the sliding window, from a session's CREATION (§20 erratum
+      # 105): a session may slide, but never past this, so an actively used stolen
+      # cookie still dies on a schedule its holder cannot extend.
+      SESSION_MAX_TTL: ${SESSION_MAX_TTL:-2160h}
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-clippet_session}
+      # open | first | closed. `first` (the default, §20 erratum 106) accepts
+      # registration only while the users table is EMPTY: the first account
+      # bootstraps the instance and closes the door behind it. Set `open`
+      # deliberately while friends sign up, or add them with
+      # `clippet admin users create` (DEPLOY.md §19).
+      REGISTRATION: ${REGISTRATION:-first}
+      # shared (the default, and what every version before this one did) = the
+      # library lists every account's listed clips; own = each account's
+      # library and GET /api/clips are its own clips only (DEPLOY.md §20).
+      LIBRARY_SCOPE: ${LIBRARY_SCOPE:-shared}
+      # One lowercase word an instance that is NOT the production one wears
+      # (§20 erratum 285, DEPLOY.md §7.1): the wordmark's span goes grey instead
+      # of green, the word sits beside the mark, <title> carries it and Discord's
+      # site line reads `clippet dev`. Empty — the default — changes nothing
+      # anywhere, which is what the production instance runs.
+      INSTANCE_BADGE: ${INSTANCE_BADGE:-}
+      # `on` (the default): the share page also declares its own Discord card, a
+      # component embed (§20 erratum 316, DEPLOY.md §28). The og:/twitter: card
+      # is unchanged either way and is what Discord falls back to.
+      CARD_COMPONENTS: ${CARD_COMPONENTS:-on}
+      SETUP_WIZARD: ${SETUP_WIZARD:-on}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+      VIEW_DEDUPE_TTL: ${VIEW_DEDUPE_TTL:-30m}
+      VIEW_DEDUPE_MAX: ${VIEW_DEDUPE_MAX:-50000}
+      RATE_AUTH_PER_MIN: ${RATE_AUTH_PER_MIN:-10}
+      RATE_UPLOAD_PER_HOUR: ${RATE_UPLOAD_PER_HOUR:-60}
+      RATE_UPLOAD_PER_HOUR_PER_IP: ${RATE_UPLOAD_PER_HOUR_PER_IP:-120}
+      RATE_LIMIT_MAX_KEYS: ${RATE_LIMIT_MAX_KEYS:-10000}
+      # Unset = the feature is OFF.
+      # Set it and EVERY listed clip that becomes ready is auto-posted (DEPLOY.md §11).
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
+      # Per-tag channel routing (DEPLOY.md §25): `<tag>=<url>;<tag>=<url>`, the
+      # first matching tag wins, and `unmatched` decides what happens to a clip
+      # no rule matched. Unset = no routing at all, which is what every
+      # deployment before these variables existed did.
+      DISCORD_WEBHOOK_ROUTES: ${DISCORD_WEBHOOK_ROUTES:-}
+      DISCORD_WEBHOOK_UNMATCHED: ${DISCORD_WEBHOOK_UNMATCHED:-default}
+      # Clip webhook (DEPLOY.md §11.1): both or neither. Unset = OFF.
+      CLIP_WEBHOOK_URL: ${CLIP_WEBHOOK_URL:-}
+      CLIP_WEBHOOK_SECRET: ${CLIP_WEBHOOK_SECRET:-}
+      # The Discord BOT (ROADMAP #33, DEPLOY.md §30) - a different feature from
+      # the Discord webhook above: the webhook POSTS a ready clip to a channel, the bot
+      # ANSWERS `/clip` in a server. All three or none: one of them set without
+      # the others is a boot error, because a half-configured bot is a silently
+      # dead one. Unset (the default) = no interactions route, no slash command
+      # and no client. Only DISCORD_BOT_TOKEN is a secret; it belongs in .env.
+      DISCORD_APP_ID: ${DISCORD_APP_ID:-}
+      DISCORD_PUBLIC_KEY: ${DISCORD_PUBLIC_KEY:-}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+      # The two commands' NAMES, without the slash: `/clip link:` (default
+      # `clip`) and `/upload file:` (default `upload`). A server holds one
+      # instance's command per name, so two instances sharing a server need
+      # two names each - a dev box on `clip-dev`/`upload-dev` beside a
+      # production box on the defaults. The two must differ. A boot error with
+      # the bot off, or on the official bot under any names but the defaults
+      # (DEPLOY.md §30.2).
+      DISCORD_COMMAND_NAME: ${DISCORD_COMMAND_NAME:-}
+      DISCORD_UPLOAD_COMMAND_NAME: ${DISCORD_UPLOAD_COMMAND_NAME:-}
+      # The message command's name - a message's Apps menu (default `Enrich`;
+      # mixed case and spaces allowed, 1-32 characters: `Enrich (dev)`).
+      DISCORD_ENRICH_COMMAND_NAME: ${DISCORD_ENRICH_COMMAND_NAME:-}
+      # The settings command's name (default `settings`; the slash rule, and it
+      # must differ from the two above: `settings-dev` on a dev box). DEPLOY §30.9.
+      DISCORD_SETTINGS_COMMAND_NAME: ${DISCORD_SETTINGS_COMMAND_NAME:-}
+      # `/upload` opens a form (Title, Delete after, Tags) while the upload runs;
+      # `off` answers "thinking..." and every upload gets the account's defaults
+      # (DEPLOY.md §30.5).
+      DISCORD_UPLOAD_FORM: ${DISCORD_UPLOAD_FORM:-on}
+      # `on`: Enrich on a message with a video and no link to a clip here
+      # uploads that video, for its poster or Manage Server. Off by default
+      # (DEPLOY.md §30.4).
+      DISCORD_ENRICH_UPLOAD: ${DISCORD_ENRICH_UPLOAD:-off}
+      # Clippet Auto on this box (DEPLOY.md §30.10): off|prompt|auto, the Auto
+      # app's bot token (a SECRET - keep it in .env), Prompt's seconds, the notice.
+      DISCORD_AUTO_MODE: ${DISCORD_AUTO_MODE:-}
+      DISCORD_AUTO_TOKEN: ${DISCORD_AUTO_TOKEN:-}
+      DISCORD_AUTO_SECONDS: ${DISCORD_AUTO_SECONDS:-}
+      DISCORD_AUTO_NOTICE: ${DISCORD_AUTO_NOTICE:-}
+      # Sign in with Discord (ROADMAP #44, DEPLOY.md §19.6) - the instance's OWN
+      # application, a different feature from the bot above: a linked account
+      # can be opened with Discord; nothing is ever created by it. Both or
+      # none; one alone is a boot error. The secret belongs in .env.
+      DISCORD_LOGIN_CLIENT_ID: ${DISCORD_LOGIN_CLIENT_ID:-}
+      DISCORD_LOGIN_CLIENT_SECRET: ${DISCORD_LOGIN_CLIENT_SECRET:-}
+      SSR_TIMEOUT: ${SSR_TIMEOUT:-5s}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-text}
+    volumes:
+      - app_data:/data          # SQLite (clippet.db + -wal + -shm). NAMED volume, never a Windows bind mount.
+      - app_scratch:/scratch    # transcode scratch disk (source copies + encoder outputs)
+      # THE MEDIA: a host directory, bound at /media (STORAGE_DIR). The default is the
+      # person's own Videos folder, spelled from HOME (macOS, Linux, Git Bash) or
+      # USERPROFILE (PowerShell, cmd) because compose cannot expand `~`; a server sets
+      # STORAGE_DIR_HOST in .env (DEPLOY.md §32.1, which also says why a nested `:?`
+      # guard cannot be used here and what `admin doctor` warns about instead).
+      # Compose creates the directory on the first `up`; on Linux it is then owned by
+      # root, and uid 10001 must own it before the app can write (DEPLOY.md §2).
+      - "${STORAGE_DIR_HOST:-${HOME:-${USERPROFILE}}/Videos/clippet}:/media"
+    stop_grace_period: 45s      # SIGTERM budget: Shutdown(15s) ∥ worker.Stop(20s) → sweeper → db.Close ≈ 25s max (§18.1); 20s headroom
+    # The daemon's json-file default is UNBOUNDED, and that file sits on the same filesystem as
+    # app_data / app_scratch (§20 erratum 96). One INFO access-log line per request
+    # plus a scanner on a public origin is a GiB a day, and SCRATCH_MIN_FREE_BYTES does not guard
+    # the log path. 50m × 5 = ~250 MB kept; `docker compose logs --since` still works (DEPLOY.md §8).
+    logging:
+      driver: json-file
+      options: { max-size: "50m", max-file: "5" }
+    healthcheck:   # liveness = DB only; the listener is up before the storage ping loop starts (§8.7), so this never waits on storage
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  app_data: {}
+  app_scratch: {}

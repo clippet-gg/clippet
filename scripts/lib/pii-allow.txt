@@ -1,0 +1,6 @@
+# pii-allow.txt — tracked files that carry a PUBLIC pattern's shape on purpose, one per line:
+#   <path>  pii-public.txt#<k>
+# The hit in that file is not reported for that pattern only; every other pattern still applies there.
+# Each line says why. Never list the private half here: a value that is allowed is not private.
+# The Pass sidecar's published image, which compose.pass.yaml must name to pull it.
+compose.pass.yaml  pii-public.txt#11

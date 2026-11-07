@@ -1,0 +1,34 @@
+# govulncheck — known vulnerabilities REACHABLE from this module's code, on every pull request and once a day
+# (a new advisory can name code that has not changed). It runs in the Dockerfile's `base` stage, so the Go
+# version is the one the image is built with.
+name: govulncheck
+
+on:
+  pull_request:
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: The Go image (the Dockerfile's base stage)
+        shell: bash
+        run: docker build --target base -t clippet-govulncheck:ci .
+      - name: govulncheck
+        shell: bash
+        env:
+          GOVULNCHECK_VERSION: v1.9.0
+        run: |
+          docker run --rm -v "$PWD:/src:ro" -w /src -e GOFLAGS=-buildvcs=false clippet-govulncheck:ci \
+            go run "golang.org/x/vuln/cmd/govulncheck@$GOVULNCHECK_VERSION" ./...

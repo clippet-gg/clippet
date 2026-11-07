@@ -1,0 +1,23 @@
+-- 0024_guild_scope.sql — a server binding that answers for ONE person
+-- (DESIGN.md §20 erratum 342: route by person).
+--
+-- Until now a binding (0016) meant "every member of this Discord server uploads
+-- into this account". A member who runs his own Clippet wants the opposite for
+-- himself only: his uploads in that server go to HIS box, everybody else's to
+-- the server's. The official bot's plane keeps that route; the box has to know
+-- which of the two it consented to, because the plane's origin proof (GET
+-- /api/bot/claim) is the only question it asks — and a box that consented for
+-- one person must never answer yes when a server's admin names it for the whole
+-- server.
+--
+-- `server` is every binding that exists today and every one `admin bot bind`
+-- writes without `--person`; `person` is written only by `admin bot bind
+-- <guild-id> <username> --person`, which needs the account's Discord user id
+-- (0019, `admin users link`). On a person binding the claim proof answers only
+-- for that id, and an interaction from any other member is refused before
+-- anything is fetched. The CHECK keeps the two words the only two: a hand-typed
+-- third would otherwise read as neither and fail in a way nobody chose.
+--
+-- guild_id stays the primary key: one account per server per box. Two friends
+-- on one self-host want two boxes, not two rows.
+ALTER TABLE discord_guilds ADD COLUMN scope TEXT NOT NULL DEFAULT 'server' CHECK (scope IN ('server', 'person'));

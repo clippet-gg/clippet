@@ -1,0 +1,42 @@
+-- 0017_bytes_served.sql — how many bytes this instance sent to viewers, one
+-- row per UTC day (ROADMAP #39, DESIGN.md §20 erratum 270).
+--
+-- The whole table is one integer per day. It is the number an operator on a
+-- metered provider actually fears — stored bytes are a sum of columns this
+-- database already has (db.StorageUsed), served bytes existed nowhere — and it
+-- is the only new data the storage-cost line needed.
+--
+-- WHAT IT DELIBERATELY DOES NOT HOLD, and cannot be extended to hold without
+-- saying so here: no viewer, no IP, no user agent, no session, no account, no
+-- clip and no route. There is no column to join on and no key to group by. A
+-- day and a count of bytes is not a record of who watched what, and that is the
+-- point: §15's promise is that this app learns nothing about a viewer, and a
+-- per-clip or per-viewer counter would be exactly the "private view counts are
+-- the ceiling" line (§8.2) crossed for an accounting number.
+--
+-- `day` is TEXT `YYYY-MM-DD` in UTC and is the primary key. Text rather than an
+-- integer because every surface prints and ranges over it as a date, because
+-- the PK's own ordering is then the calendar's, and because a month is
+-- `day >= '2026-09-01' AND day < '2026-10-01'` — an index range over the key,
+-- with no arithmetic anywhere. UTC rather than the operator's zone for the
+-- reason every other timestamp here is UTC: a container has no zone worth
+-- trusting, and a boundary that moves twice a year would put one hour of
+-- serving in the wrong month.
+--
+-- `bytes` is what `http.ServeContent` ACTUALLY WROTE to viewers that day —
+-- media, posters, the Light copies a card fetches, filmstrips and preview GIFs
+-- — so a client that aborts a ranged read is counted for what it received and
+-- nothing more. The app accumulates in memory and adds to the day's row on a
+-- flush window (§20 erratum 270), so a crash loses at most that window; the row
+-- is only ever incremented, never set, so two flushes cannot lose each other's
+-- bytes.
+--
+-- Retention is 400 days, pruned by the sweeper's own tick with one DELETE. That
+-- is a year plus a margin: the surfaces show today and this calendar month, and
+-- a year of history is what makes "is this month unusual" answerable at all. No
+-- index beyond the primary key — every read is one day or one month of it, and
+-- the table cannot exceed 400 rows.
+CREATE TABLE bytes_served (
+  day   TEXT PRIMARY KEY,   -- YYYY-MM-DD, UTC
+  bytes INTEGER NOT NULL    -- bytes written to viewers that day, aggregate, nothing else
+);

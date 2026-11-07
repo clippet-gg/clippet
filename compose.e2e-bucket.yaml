@@ -1,0 +1,123 @@
+# compose.e2e-bucket.yaml — the TEST HARNESS's own S3 server, published on the
+# host, so a local stack runs `MEDIA_DELIVERY=redirect` against a real bucket
+# and can be tested from outside the compose network (DESIGN.md §20 errata 278
+# and 280, DEPLOY.md §33.6; run 22 lane `harness22`).
+#
+# It was compose.e2e-minio.yaml with services `minio` and `bucket-init` until
+# §20 erratum 346 renamed it (the records before that use the old names); since
+# run 22 it has carried NO MinIO. MinIO deleted its Docker Hub images on 2026-09-11,
+# so the server is RustFS, pinned BY DIGEST (an index with linux/amd64 and
+# linux/arm64: a Windows GPU box and a Mac pull the same pin), measured as a
+# drop-in in run 22.
+#
+# THERE IS NO CLIENT IMAGE (§20 erratum 346). The bucket is created by the app's
+# own `clippet admin objects init` — the E2E's step 1 runs it right after `up`,
+# before it waits for /readyz, as do `gatestack.sh up` and t1's visual-only
+# bring-up — and every object the harness plants or removes goes through
+# `admin objects put|rm` in the app container. A stack brought up by hand with
+# this overlay runs it once itself:
+#
+#   docker compose exec app clippet admin objects init
+#
+# It is a DEVELOPMENT and TEST aid and nothing else: the gate stack
+# (scripts/lib/gatestack.sh) and a lane's T1 stack are made of it. A production
+# instance keeps its media in a folder (STORAGE_BACKEND=fs) or in R2, B2 or S3,
+# where the app and the viewer reach one public host and MEDIA_PRESIGN_ENDPOINT
+# stays unset.
+#
+# SELF-CONTAINED ON PURPOSE. The server and the app's bucket wiring are
+# defined here COMPLETELY — image, command, environment, volume, healthcheck,
+# depends_on — so the file gives the same stack whatever compose.yaml carries
+# (run 22 lane `folder22` made the folder store compose.yaml's default).
+#
+# THE SERVICE IS `s3` (§20 erratum 346): the app's S3_ENDPOINT default below
+# (`s3:9000`) and the drop-ins that derive the same origin from an empty
+# S3_ENDPOINT address it, and its volume is `s3_data`. The knobs keep their old
+# names — MINIO_PUBLISH, MINIO_ROOT_USER, MINIO_ROOT_PASSWORD, and the gate's
+# GATE_MINIO_PORT — because `.env` files and the records carry them.
+#
+# Select it in `.env`:
+#
+#   COMPOSE_PATH_SEPARATOR=:
+#   COMPOSE_FILE=compose.yaml:compose.e2e-bucket.yaml
+#   MEDIA_PRESIGN_ENDPOINT=http://localhost:9000    # must MATCH MINIO_PUBLISH below
+#
+# The overlay sets MEDIA_DELIVERY=redirect itself (the shape it exists to test);
+# a probe container still pins proxy with `-e MEDIA_DELIVERY=proxy`.
+# `bash scripts/lib/gatestack.sh env` writes exactly such a file for the gate.
+#
+# MINIO_PUBLISH is `127.0.0.1:9000` by default: loopback unless an operator
+# says otherwise. A lane stack sets it to a port of its own (`127.0.0.1:9601`)
+# exactly as it sets CLIPPET_PUBLISH, so two stacks can be up at once. The
+# signature covers the HOST NAME, so MEDIA_PRESIGN_ENDPOINT and the port
+# published here must agree: a link signed for one origin is refused at every
+# other, which looks from outside like a broken bucket rather than a typo.
+#
+# The credentials are the two the dev stack always had (MINIO_ROOT_USER /
+# MINIO_ROOT_PASSWORD, `clippet` / `clippet-dev-secret` by default), and the
+# app's four S3_* interpolate exactly as compose.yaml spelled them, so a
+# harness reader that falls back to those defaults (88-fsstore, 92-setup)
+# names the same key the server holds.
+#
+# NO CALL-HOME (the anti-features): RustFS asks version.rustfs.com for the
+# latest version at every start unless RUSTFS_CHECK_UPDATE=false (measured, both
+# ways); its web console is off (a second listener nothing uses); the OTLP
+# exporter has no endpoint (its default); logs go to stdout under the same
+# json-file ceiling as the app. RustFS answers 200, not 409, to a CreateBucket
+# on a bucket that exists; `admin objects init` asks BucketExists first anyway.
+#
+# The app's media is the bucket here, so its volumes are RESET to the two named
+# ones: a folder-store bind that compose.yaml may carry for its own default
+# (`…:/media`) would otherwise create a directory on the host for a stack that
+# never writes there.
+services:
+  app:
+    volumes: !override
+      - app_data:/data
+      - app_scratch:/scratch
+    environment:
+      STORAGE_BACKEND: s3
+      STORAGE_DIR: ""
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://s3:9000}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-clips}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-${MINIO_ROOT_USER:-clippet}}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-${MINIO_ROOT_PASSWORD:-clippet-dev-secret}}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+      S3_KEY_PREFIX: ${S3_KEY_PREFIX:-}
+      MEDIA_DELIVERY: redirect
+      MEDIA_PRESIGN_TTL: ${MEDIA_PRESIGN_TTL:-}
+      MEDIA_PRESIGN_ENDPOINT: ${MEDIA_PRESIGN_ENDPOINT:-http://localhost:9000}
+    depends_on:
+      s3: { condition: service_healthy }
+
+  s3:
+    # RustFS 1.0.1 (Apache-2.0; pushed 2026-10-03), the multi-arch index digest.
+    image: rustfs/rustfs:1.0.1@sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c
+    command: ["rustfs", "--address", ":9000", "/data"]
+    environment:
+      RUSTFS_ACCESS_KEY: ${MINIO_ROOT_USER:-clippet}
+      RUSTFS_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-clippet-dev-secret}
+      RUSTFS_CHECK_UPDATE: "false"
+      RUSTFS_CONSOLE_ENABLE: "false"
+      RUSTFS_OBS_ENDPOINT: ""
+      RUSTFS_OBS_LOG_DIRECTORY: ""
+      RUSTFS_OBS_LOGGER_LEVEL: warn
+      RUSTFS_REGION: ${S3_REGION:-us-east-1}
+    volumes: [s3_data:/data]
+    ports: ["${MINIO_PUBLISH:-127.0.0.1:9000}:9000"]
+    logging:
+      driver: json-file
+      options: { max-size: "50m", max-file: "5" }
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:9000/health/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  s3_data: {}
+  app_data: {}
+  app_scratch: {}

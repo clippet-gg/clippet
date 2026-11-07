@@ -1,0 +1,21 @@
+-- 0007_social_dims.sql — the dedicated social rendition (DESIGN.md §17 #3, §20 erratum 122).
+--
+-- `social_key`, `social_size` and `social_etag` have existed since 0001 and
+-- have been NULL on every row ever written: `/social.mp4` served the main
+-- rendition through its COALESCE. This file adds the two columns the PRODUCER
+-- needs, and nothing else — no index (the social file is only ever reached
+-- through a clip already in hand), no CHECK, no default, no rewrite of an
+-- existing row. Every column is NULL for every clip that exists, which is
+-- exactly what "this clip has no social rendition" means.
+--
+-- Why the dimensions have to be stored at all: `og:video:width/height` and
+-- the `twitter:player` dims must describe the file the crawler is about to
+-- fetch, which from now on is the SOCIAL file. Today the social encode keeps
+-- the rendition's dimensions and only halves its frame rate, so the two pairs
+-- agree — but they agree by construction, not by definition, and an operator
+-- who narrows TRANSCODE_MAX_WIDTH/HEIGHT after a clip was encoded makes a
+-- regenerated social file genuinely smaller than the rendition beside it. A
+-- card that states dimensions it did not measure is the bug this pair exists
+-- to make impossible (§20 erratum 123).
+ALTER TABLE clips ADD COLUMN social_width  INTEGER;   -- MEASURED from the produced social mp4, never planned
+ALTER TABLE clips ADD COLUMN social_height INTEGER;

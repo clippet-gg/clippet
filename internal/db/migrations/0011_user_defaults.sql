@@ -1,0 +1,22 @@
+-- 0011_user_defaults.sql — per-user upload defaults (ROADMAP #22).
+--
+-- Two nullable-or-defaulted columns on `users` and nothing else: no index (a
+-- default is only ever read through a user already in hand), no CHECK, no
+-- backfill. ALTER TABLE ... ADD COLUMN is O(1) in SQLite and the values every
+-- existing row gets are exactly "this account has expressed no preference",
+-- so an installation running on 0001-0010 upgrades by applying this file and
+-- nothing more.
+--
+-- `default_ttl_days` is stored in the WIRE unit of §8.2 — NULL, 0, 1, 7, 30
+-- or 90 — and not in seconds, because it has three states and seconds have
+-- two. NULL means "no preference: follow DEFAULT_CLIP_TTL", while 0 means the
+-- account has CHOSEN keep-forever, which is a different thing on an instance
+-- whose DEFAULT_CLIP_TTL is 7d. Storing seconds would have collapsed those
+-- two into the same NULL and made "keep everything forever" unexpressible.
+--
+-- `default_unlisted` has only two states and is therefore a plain flag with
+-- the value every account already had: 0, "listed unless the upload says
+-- otherwise". A per-upload field always wins over both columns (§20 erratum
+-- 155), so nothing here can change what an existing capture tool does.
+ALTER TABLE users ADD COLUMN default_ttl_days INTEGER;                 -- NULL = follow DEFAULT_CLIP_TTL; 0 = never; 1|7|30|90
+ALTER TABLE users ADD COLUMN default_unlisted INTEGER NOT NULL DEFAULT 0;

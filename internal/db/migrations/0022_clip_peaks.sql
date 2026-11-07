@@ -1,0 +1,12 @@
+-- 0022_clip_peaks.sql — an audio clip's waveform (DESIGN.md §20 erratum 329).
+--
+-- `peaks` is the waveform an audio clip's card was drawn from: one bar per two
+-- lowercase hex digits (transcode.EncodePeaks, 70 bars = 140 characters), each
+-- bar the loudest moment of its slice of the clip quantised to 0..255. The
+-- poster PNG and the audiogram are drawn from these exact numbers, and the
+-- share page draws its own progress over the poster from them, so the bars the
+-- page colours are the bars the picture has. It is written once, by the
+-- transcode's commit, and NULL on every video and on any audio row committed
+-- before it existed (the page then draws no bars of its own). No index: every
+-- reader already holds the row.
+ALTER TABLE clips ADD COLUMN peaks TEXT;

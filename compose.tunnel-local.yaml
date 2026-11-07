@@ -1,0 +1,36 @@
+# compose.tunnel-local.yaml — a Cloudflare named tunnel that is LOCALLY managed: the tunnel's
+# credentials file and its ingress config live in a Docker volume, not in the dashboard and not
+# in .env. The sibling compose.tunnel.yaml runs a dashboard-managed tunnel from a token; use ONE.
+#
+# The volume is prepared once, outside compose:
+#   cloudflared tunnel login                       (a browser authorisation of the zone)
+#   cloudflared tunnel create <name>               (writes <id>.json — the tunnel's secret)
+#   cloudflared tunnel route dns <name> <host>     (the proxied CNAME to <id>.cfargotunnel.com)
+#   then <id>.json is copied into the volume as credentials.json beside a config.yml whose
+#   ingress sends <host> to http://app:8080 and everything else to http_status:404.
+# The origin certificate from `tunnel login` (cert.pem) is NOT in this volume: it can create
+# tunnels and DNS records and the running container has no business holding it.
+#
+# Select with COMPOSE_FILE=compose.yaml:...:compose.tunnel-local.yaml and name the volume in
+# TUNNEL_VOLUME (default clippet-dev-tunnel).
+#
+# The tag is PINNED and must match compose.tunnel.yaml's (§20 erratum 292, DEPLOY.md §17.1);
+# scripts/check.sh refuses a moving `latest` tag in any compose file. Index digest as of 2026-09-16:
+#   cloudflare/cloudflared:2026.8.3   sha256:51c9cefcb4569df44e1ad403ab1d3d8065aa8e84339bcfc6aee75502e1140339
+services:
+  tunnel:
+    image: cloudflare/cloudflared:2026.8.3
+    restart: unless-stopped
+    command: tunnel --config /etc/cloudflared/config.yml run
+    volumes:
+      - ${TUNNEL_VOLUME:-clippet-dev-tunnel}:/etc/cloudflared:ro
+    depends_on:
+      app:
+        condition: service_started
+    networks:
+      - default
+
+volumes:
+  clippet-dev-tunnel:
+    external: true
+    name: ${TUNNEL_VOLUME:-clippet-dev-tunnel}

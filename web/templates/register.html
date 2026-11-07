@@ -1,0 +1,33 @@
+{{define "content"}}
+<section class="auth">
+  {{- with .Badge}}<span class="lockup">{{end}}
+  <span class="wordmark display" role="img" aria-label="clippet">cli<span class="pp">pp</span>et</span>
+  {{- with .Badge}}<span class="instance">{{.}}</span></span>{{end}}
+  {{- if .Open}}
+  <form class="panel" data-auth="register" action="/api/auth/register" method="post">
+    <div class="panel-head"><h1>Create an account</h1></div>
+    <input type="hidden" name="next" value="{{.Next}}">
+    <div class="row">
+      <span class="rl"><label for="a-user">Username</label></span>
+      <span class="rc"><input id="a-user" type="text" name="username" autocomplete="username" pattern="[A-Za-z0-9_]{3,32}" required></span>
+      <span class="rs">3–32 letters, digits or _</span>
+    </div>
+    <div class="row">
+      <span class="rl"><label for="a-pass">Password</label></span>
+      <span class="rc"><input id="a-pass" type="password" name="password" autocomplete="new-password" minlength="8" required></span>
+      <span class="rs">8–72 characters</span>
+    </div>
+    <noscript><p class="hint">Creating an account needs JavaScript in this browser. Ask whoever runs {{.Host}} to make one for you.</p></noscript>
+    <div class="row">
+      <span class="rl"></span>
+      <span class="rc"><button type="submit" class="btn primary">Register</button></span>
+      <span class="rs"></span>
+    </div>
+    <p class="error" data-error hidden></p>
+  </form>
+  {{- else}}
+  <p class="notice" data-registration-closed>Registration is closed. Ask whoever runs {{.Host}} for an account.</p>
+  {{- end}}
+  <p class="alt"><a href="{{.AltURL}}">Already have an account? Log in</a></p>
+</section>
+{{end}}

@@ -1,0 +1,85 @@
+{{define "content"}}
+<article class="collection" data-collection-page data-collection-id="{{.ID}}" data-page-url="{{.PageURL}}" data-api-url="{{.APIURL}}" data-clips-url="{{.ClipsURL}}">
+  <h1 data-collection-title>{{.Title}}</h1>
+  {{- if .IsOwner}}
+  <div class="actions" role="group" aria-label="Actions">
+    <button type="button" class="btn primary" data-copy-link>Copy link</button>
+    <span class="copied" data-copied hidden>copied</span>
+  </div>
+  {{- end}}
+  <ul class="clips collection-clips">
+    {{- range .Clips}}
+    <li class="clip-row" data-clip-id="{{.ID}}" data-state="{{.State}}">
+      <span class="thumb">
+        <a class="frame{{if not .PosterURL}} empty{{end}}" href="{{.PageURL}}">
+          {{- if .PosterURL}}<img src="{{.PosterURL}}" alt="" loading="lazy">{{else}}<span class="badge badge-{{.State}}">{{.State}}</span>{{end -}}
+        </a>
+      </span>
+      <div class="info">
+        <a class="title" href="{{.PageURL}}" title="{{.Title}}">{{.Title}}</a>
+        {{- if ne .State "ready"}}
+        <div class="sub"><span>{{.StateLabel}}</span></div>
+        {{- end}}
+      </div>
+      {{- if .MemberURL}}
+      <!-- One row's own controls (ROADMAP #17, §20 erratum 151). Server-rendered
+           `hidden` and revealed by app.js, exactly as the library's bulk bar is:
+           a control that cannot be wired without JavaScript never appears, and
+           the picker below still edits the whole membership without it. -->
+      <div class="row-actions" data-row-actions hidden>
+        <button type="button" class="linkish" data-member-move="up" aria-label="Move up">↑</button>
+        <button type="button" class="linkish" data-member-move="down" aria-label="Move down">↓</button>
+        <button type="button" class="linkish" data-member-remove data-member-url="{{.MemberURL}}">Remove</button>
+      </div>
+      {{- end}}
+    </li>
+    {{- end}}
+  </ul>
+  <p class="empty"{{if .Clips}} hidden="hidden"{{end}}>This collection is empty.</p>
+  {{- if .IsOwner}}
+  <p class="hint" data-members-row-status hidden></p>
+  {{- end}}
+  {{- if .IsOwner}}
+  <section class="owner" data-collection-controls>
+    <form class="panel" data-collection-rename>
+      <div class="panel-head"><h2>Collection</h2><span class="hint">a list of links at its own address</span></div>
+      <div class="row">
+        <span class="rl"><label for="c-title">Title</label></span>
+        <span class="rc"><input id="c-title" type="text" name="title" maxlength="200" value="{{.Title}}" required><button type="submit" class="btn">Rename</button></span>
+        <span class="rs"></span>
+      </div>
+      <p class="error" data-error hidden></p>
+    </form>
+    <form class="panel" data-collection-members>
+      <div class="panel-head"><h2>Clips</h2><span class="hint">tick the clips that belong; only your own can go in</span></div>
+      <!-- Each entry carries its card image beside the title (§20 erratum 225 — the owner's first look:
+           selecting clips for a collection by title alone was hard). The thumbnail is decorative:
+           the label still reads as the title, so the control says the same thing to a screen reader
+           and works the same with images off. A clip that is not ready has no poster and keeps the
+           state word choiceLabel appends. Members come first and keep their order. -->
+      <div class="picker" data-members-picker>
+        {{- range .Choices}}
+        <label class="check choice"><input type="checkbox" name="clip_ids" value="{{.ID}}"{{if .Selected}} checked="checked"{{end}}>
+          {{- if .PosterURL}}<img class="choice-thumb" src="{{.PosterURL}}" alt="" loading="lazy" width="80" height="45">{{end -}}
+          <span class="choice-title">{{.Label}}</span></label>
+        {{- end}}
+      </div>
+      <div class="row">
+        <span class="rl"></span>
+        <span class="rc"><button type="submit" class="btn">Save clips</button></span>
+        <span class="rs" data-members-hint hidden>click again to confirm — the clips themselves stay</span>
+      </div>
+      <p class="ok" data-members-status hidden></p>
+      <p class="error" data-error hidden></p>
+    </form>
+    <div class="panel">
+      <div class="row">
+        <span class="rl">Delete</span>
+        <span class="rc"><button type="button" class="btn danger" data-collection-delete data-confirm-text="Really delete">Delete collection</button></span>
+        <span class="rs" data-delete-hint hidden>click again to confirm — the clips are not touched</span>
+      </div>
+    </div>
+  </section>
+  {{- end}}
+</article>
+{{end}}

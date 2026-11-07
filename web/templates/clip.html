@@ -1,0 +1,304 @@
+{{define "content"}}
+<article class="clip watch" data-clip-page data-clip-id="{{.ID}}" data-state="{{.State}}" data-page-url="{{.PageURL}}" data-api-url="{{.APIURL}}"{{if .ProgressURL}} data-progress-url="{{.ProgressURL}}"{{end}}>
+  {{- if .Ready}}
+  {{- if .IsAudio}}
+  <!-- An audio clip (§20 errata 328, 329): its waveform above a native <audio> control. An
+       <audio> has no poster of its own, so the picture is a plain <img> the player sits under;
+       `preload="metadata"` fetches the duration with one ranged request and nothing else. The
+       picture's frame carries the bars the poster was drawn from (`data-peaks`) and where they are
+       (`data-wave`), and app.js lays them over it in amber as far as the sound has played — the
+       card's audiogram, on the page. A row with no peaks has no attributes and no layer. -->
+  <div class="player audio">
+    <div class="audio-wave"{{if .Peaks}} data-wave="{{.WaveGeometry}}" data-peaks="{{.Peaks}}"{{end}}>
+      <img class="audio-picture" src="{{.PosterURL}}" alt="">
+    </div>
+    <audio controls preload="metadata" src="{{.VideoURL}}" data-view-url="{{.ViewURL}}" data-media-title="{{.Title}}" data-artwork="{{.PosterURL}}"></audio>
+  </div>
+  {{- else}}
+  <div class="player">
+    <video controls playsinline preload="metadata" poster="{{.PosterURL}}" src="{{.VideoURL}}" data-view-url="{{.ViewURL}}"></video>
+  </div>
+  {{- end}}
+  {{- if and .IsOwner .CanTrim}}
+  <!-- The trim control lives WITH the player (§20 erratum 221): the filmstrip rail is welded
+       under it, its handles seek this player and its frames are this player's. The number boxes
+       are still the API's truth and the only half that works with scripting off, and data-trim /
+       data-trim-start / data-trim-end / data-scrub-* remain app.js's selectors.
+
+       data-filmstrip-url always answers: the route MAKES a sheet when there is none (§20 erratum
+       220). The four geometry attributes are present only when a sheet exists right now, which is
+       what lets the strip paint with the page instead of after a poll.
+
+       `aria-label` keeps this a NAMED region: it has no heading of its own. -->
+  <section class="trim" data-trim data-trim-url="{{.TrimURL}}" data-api-url="{{.APIURL}}" aria-label="Trim"
+    data-filmstrip-url="{{.FilmstripURL}}"
+    {{- if .HasFilmstrip}} data-filmstrip-tiles="{{.FilmstripTiles}}" data-filmstrip-tile-w="{{.FilmstripTileW}}" data-filmstrip-tile-h="{{.FilmstripTileH}}" data-filmstrip-interval-ms="{{.FilmstripIntervalMS}}"{{end}}
+    {{- if .TrimLive}} data-trim-live{{end}}
+    {{- if .HasSourceBound}} data-source-duration-ms="{{.SourceDurationMS}}"{{end}}
+    data-trim-start-ms="{{.TrimStartMS}}" data-trim-end-ms="{{.TrimEndMS}}">
+    {{- if .HasSourceBound}}
+    <div class="scrubber" data-scrubber hidden>
+      <div class="track" data-scrub-track>
+        <!-- The filmstrip is a plain <img>, not a CSS background: `img-src 'self'` already covers
+             it, nothing has to build a url() string out of an attribute, and the same one object
+             is reused by both handle tiles from the browser's cache. All three ship EMPTY and
+             hidden — app.js sets the src once it knows a sheet exists, so a page with no client
+             and a clip with no sheet request nothing at all. The two dimmed ends and the kept
+             outline are positioned by app.js from the same percentages as the handles. -->
+        <div class="strip" data-scrub-strip hidden><img data-scrub-strip-img alt=""></div>
+        <div class="cut" data-scrub-cut="start"></div>
+        <div class="cut" data-scrub-cut="end"></div>
+        <div class="chosen" data-scrub-range></div>
+        <button type="button" class="handle" data-scrub-handle="start" role="slider" aria-label="Trim start"><span class="tc"><span class="handle-label">From</span><span class="handle-time" data-scrub-time></span></span><span class="handle-tile" data-scrub-tile hidden><img data-scrub-tile-img alt=""></span></button>
+        <button type="button" class="handle" data-scrub-handle="end" role="slider" aria-label="Trim end"><span class="tc"><span class="handle-label">To</span><span class="handle-time" data-scrub-time></span></span><span class="handle-tile" data-scrub-tile hidden><img data-scrub-tile-img alt=""></span></button>
+      </div>
+    </div>
+    {{- end}}
+    <!-- The two `name`s are inert (JSON, no <form>) and are here for the accessibility audit's
+         sake, like the tags field below. app.css hides these two inputs' spinner arrows, which
+         sat on top of the numbers themselves (the owner's first look). -->
+    <div class="row trim-row">
+      <label class="tcfield">From
+        <input type="number" name="trim_start" min="0"{{if .HasSourceBound}} max="{{.SourceDurationSec}}"{{end}} step="0.1" value="{{.TrimStartSec}}" data-trim-start>
+      </label>
+      <label class="tcfield">To
+        <input type="number" name="trim_end" min="0"{{if .HasSourceBound}} max="{{.SourceDurationSec}}"{{end}} step="0.1" value="{{.TrimEndSec}}" data-trim-end>
+      </label>
+      <span class="kept" data-trim-kept hidden></span>
+      <button type="button" class="linkish" data-scrub-set="start" hidden>From = now</button>
+      <button type="button" class="linkish" data-scrub-set="end" hidden>To = now</button>
+      <button type="button" class="btn small" data-trim-go>Trim</button>
+      <span class="hint" data-trim-status hidden></span>
+    </div>
+    <p class="hint" data-trim-note>{{.TrimNote}}</p>
+  </section>
+  {{- end}}
+  {{- else if .Failed}}
+  {{- if .IsOwner}}
+  <p class="state failed" data-status>Processing failed: {{.FailureReason}}</p>
+  {{- else}}
+  <p class="state failed" data-status>This clip could not be processed.</p>
+  {{- end}}
+  {{- else}}
+  <div class="pending">
+    <div class="rail{{if eq .State "queued"}} queued{{else}} working{{end}}" data-rail><i data-progress-bar></i></div>
+    <p class="state live" data-status>{{.StateLabel}}</p>
+  </div>
+  {{- end}}
+  <!-- One short line while the Discord card is still coming (§20 erratum 213):
+       what is happening, where it happens, and the consequence. No countdown and
+       no estimate. -->
+  {{- if .CardNote}}
+  <p class="hint" data-card-note>{{.CardNote}}</p>
+  {{- end}}
+  {{- if .Ready}}
+  <div class="under">
+    <!-- The quality selector (§20 erratum 211). Server-rendered, so a browser with
+         no JavaScript still shows which tier is playing; app.js turns the change
+         event into a src swap that keeps the position. A native select is what a
+         phone gives a usable picker for; `name` is inert here (the page POSTs nothing). -->
+    {{- if or .HasTierChoice .TierNote .TiersLive .AudioTierLabel}}
+    <div class="quality" data-quality>
+      {{- if .HasTierChoice}}
+      <label>Quality <select name="quality" data-quality-select>
+        {{- range .Tiers}}
+        <option value="{{.URL}}" data-tier="{{.Tier}}"{{if .Selected}} selected="selected"{{end}}>{{.Label}}</option>
+        {{- end}}
+      </select></label>
+      {{- end}}
+      {{- if and .IsAudio (not .HasTierChoice) .AudioTierLabel}}
+      <span data-audio-tier>{{.AudioTierLabel}}</span>
+      {{- end}}
+      {{- if .TierNote}}
+      <span class="hint" data-tier-note>{{.TierNote}}</span>
+      {{- end}}
+    </div>
+    {{- end}}
+    <div class="player-extras" data-player-extras hidden>
+      <button type="button" class="linkish" data-loop aria-pressed="false">Loop</button>
+      <span class="hint">space play · j/l 10 s · arrows 5 s, volume · m mute · f full screen</span>
+    </div>
+  </div>
+  {{- end}}
+  {{- if or .Ready .IsOwner}}
+  <!-- Actions: one strip of one shape, one of them ink (web/STYLE.md). A download is not a call
+       to action — it hands over the clip the viewer came for — and an embed snippet is how a
+       link ends up on a forum or a wiki. Neither is a share TARGET, and none is ever added.
+       The `.act` wrappers are `display: contents`, so every button and status lands directly in
+       this one group: what pairs a status with ITS button is aria-describedby, not the DOM, and
+       each status is its own polite live region so a change is announced where it happened. -->
+  <div class="actions" role="group" aria-label="Actions">
+    <button type="button" class="btn{{if .IsOwner}} primary{{end}}" data-copy-link>{{if .IsOwner}}<i class="lamp{{if not .Ready}} off{{end}}" data-copy-lamp></i>{{end}}Copy link</button>
+    {{- if .Ready}}
+    <button type="button" class="btn" data-copy-embed data-embed-code="{{.EmbedCode}}">Copy embed</button>
+    <a class="btn" href="{{.DownloadURL}}" download>Download</a>
+    {{- end}}
+    {{- if and .IsOwner .Ready (not .IsAudio)}}
+    <span class="act" data-gif data-gif-url="{{.GIFURL}}" data-gif-post-url="{{.GIFPostURL}}"{{if .HasGIF}} data-gif-ready{{end}}>
+      <button type="button" class="btn" aria-describedby="gif-status" data-gif-go>Make GIF</button>
+      <span class="hint">silent, the first seconds</span>
+      <a class="btn" data-gif-download download hidden>Download GIF</a>
+      <span class="hint" id="gif-status" aria-live="polite" data-gif-status hidden></span>
+    </span>
+    {{- if .CanPoster}}
+    <span class="act" data-poster data-poster-url="{{.PosterPostURL}}" data-poster-status-url="{{.PosterStatusURL}}"
+      data-cut-start-ms="{{.PosterCutStartMS}}"
+      {{- if .PosterLive}} data-poster-live{{end}}
+      {{- if .PosterChosen}} data-poster-seconds="{{.PosterSeconds}}"{{end}}>
+      <button type="button" class="btn" aria-describedby="poster-status poster-note" data-poster-go>Use this frame</button>
+      <span class="hint" id="poster-status" aria-live="polite" data-poster-status hidden></span>
+      <span class="hint" id="poster-note" data-poster-note>{{.PosterNote}}</span>
+    </span>
+    {{- end}}
+    <!-- Replace IS a real multipart form with an action and a method, so it posts without a
+         client too (it lands on the JSON 202). The label wraps the file input; with a client the
+         chosen file goes straight up, without one the Replace button sends it. Cancel stops the
+         UPLOAD and ships HIDDEN — app.js reveals it — so a browser without JavaScript is never
+         offered a control that does nothing. -->
+    <form class="act" data-replace data-replace-url="{{.ReplaceURL}}"{{if .ReplaceLive}} data-replace-live{{end}} action="{{.ReplaceURL}}" method="post" enctype="multipart/form-data">
+      <label class="btn">Replace video<input type="file" name="file" accept="video/*,.mp4,.m4v,.mov,.webm,.mkv,.avi,.ts" data-replace-file required></label>
+      <span class="hint">same link; the trim and the GIF reset</span>
+      <button type="submit" class="btn" aria-describedby="replace-status" data-replace-go>Replace</button>
+      <button type="button" class="btn danger" data-replace-cancel hidden>Cancel</button>
+      <span class="hint" id="replace-status" aria-live="polite" data-replace-status hidden></span>
+    </form>
+    {{- end}}
+    {{- if .IsOwner}}
+    {{- if .Failed}}
+    <button type="button" class="btn" data-retry>Retry processing</button>
+    {{- end}}
+    {{- if not .Ready}}
+    <span class="hint" data-copy-hint>not shareable yet</span>
+    {{- end}}
+    {{- end}}
+    <span class="copied" data-copied hidden>copied</span>
+  </div>
+  {{- if .IsOwner}}
+  <p class="error" data-owner-error hidden></p>
+  {{- end}}
+  {{- if and .IsOwner .Ready}}
+  <img class="gif-preview" data-gif-img alt="" hidden>
+  {{- end}}
+  {{- end}}
+  <div class="titleblock">
+    <h1>{{.Title}}</h1>
+    {{- if .Description}}
+    <p class="description">{{.Description}}</p>
+    {{- end}}
+  </div>
+  <dl class="facts">
+    <div><dt>Uploaded</dt><dd><time datetime="{{.UploadedISO}}" data-local>{{.Uploaded}}</time></dd></div>
+    <div><dt>Lifetime</dt><dd data-expiry>{{if .ExpiryISO}}{{.ExpiryPrefix}}<time datetime="{{.ExpiryISO}}" data-local data-countdown>{{.ExpiryDate}}</time>{{.ExpirySuffix}}{{else}}{{.Expiry}}{{end}}</dd></div>
+    {{- if .VideoFacts}}
+    <div><dt>{{if .IsAudio}}Audio{{else}}Video{{end}}</dt><dd{{if .VideoDurationMS}} data-duration-ms="{{.VideoDurationMS}}"{{end}}>{{.VideoFacts}}</dd></div>
+    {{- end}}
+    {{- if .Unlisted}}
+    <div><dt>Visibility</dt><dd data-visibility>unlisted</dd></div>
+    {{- end}}
+    {{- if .IsOwner}}
+    {{- /*
+      No "Memorable links are easier to guess." row here: erratum 251 put one on
+      an owner's memorable unlisted clip and §20 erratum 264 WITHDREW it (the owner's
+      call). The grammar is chosen on the upload form and in Settings,
+      where the hint now shows an example of each; the watch page is where a clip
+      is WATCHED, and a line about a choice its owner already made is copy on a
+      page whose whole rule is that it carries none. Nothing renders it for
+      anybody, owner or stranger, listed or unlisted, in either grammar --
+      `clipPage` no longer even carries the id's grammar. A TEMPLATE comment
+      rather than an HTML one: an absence is worth explaining to a reader of this
+      file and to nobody looking at the served page.
+    */}}
+    <div><dt>Views</dt><dd><span data-views="{{.Views}}">{{.Views}}</span> <span class="hint">only you see this</span></dd></div>
+    <div><dt>Stored</dt><dd data-stored>{{.StoredSize}} · <a href="{{.OriginalURL}}" download data-original-link>Download original ({{.SourceSize}})</a></dd></div>
+    {{- end}}
+  </dl>
+  {{- if .IsOwner}}
+  <section class="owner" data-owner-controls data-touch-url="{{.TouchURL}}"{{if .Expires}} data-expires{{end}}>
+    <!-- The N109 <noscript> treatment, for the block that needs it most: these
+         controls send JSON to routes that take no form submission, so without a
+         client they look live and do nothing. ONE line, and it names the
+         exception rather than over-claiming — Replace IS a real multipart form
+         with an action and a method, and it really does post. -->
+    <noscript><p class="hint">Editing this clip needs JavaScript; replacing the video still works.</p></noscript>
+    <!-- ONE Save. app.js fans it out to the three endpoints — the clip PATCH
+         (title, description, lifetime, unlisted), the tags PATCH and one
+         membership request per changed collection box — and says `saved` only
+         after all of them landed (web/STYLE.md; §20 erratum 240). -->
+    <form class="panel" data-edit>
+      <div class="panel-head"><h2>Details</h2><span class="hint">one Save for the lot</span></div>
+      <div class="row top">
+        <span class="rl"><label for="o-title">Title</label></span>
+        <span class="rc"><input type="text" name="title" maxlength="200" value="{{.Title}}" id="o-title" required></span>
+        <span class="rs"></span>
+      </div>
+      <div class="row top">
+        <span class="rl"><label for="o-desc">Description</label></span>
+        <span class="rc"><textarea name="description" maxlength="2000" rows="2" id="o-desc">{{.Description}}</textarea></span>
+        <span class="rs"></span>
+      </div>
+      <div class="row top" data-tags-edit data-api-url="{{.APIURL}}">
+        <span class="rl"><label for="o-tags">Tags</label></span>
+        <!-- 329 = db.MaxTagsPerClip (10) x db.MaxTagRunes (32) + 9 commas: the widest legal value.
+             The `name` here is INERT — app.js PATCHes JSON — but Chrome's accessibility audit asks
+             every field for an id or a name, and the data-* attribute stays the selector (N045, N048). -->
+        <span class="rc"><input type="text" name="tags" maxlength="329" autocomplete="off" value="{{.TagsText}}" data-tags-input id="o-tags" placeholder="comma separated"></span>
+        <span class="rs" data-tags-status>up to ten · seen by every account here · never on the watch page</span>
+      </div>
+      <div class="row top" data-clip-collections>
+        <span class="rl">Collections</span>
+        <span class="rc">
+          <div class="collist">
+            {{- if .Collections}}
+            {{- range .Collections}}
+            <label class="check"><input type="checkbox" name="collection" data-collection-toggle data-member-url="{{.MemberURL}}" data-collection-id="{{.ID}}"{{if .Selected}} checked="checked"{{end}}> {{.Title}} <span class="n">{{.ClipCount}}</span></label>
+            {{- end}}
+            {{- else}}
+            <span class="hint">No collections yet — make one in the library.</span>
+            {{- end}}
+          </div>
+        </span>
+        <span class="rs" data-collections-status>does not change who can watch</span>
+      </div>
+      <!-- The lifetime row speaks the choosing grammar, "Delete after …" (§20 erratum 244): the
+           first option is the no-op (`no change`, value "", never `selected` — web_test pins why),
+           the rest complete the sentence, and the state cell keeps the grammar of a FACT
+           (`23 days left`, `kept forever`). Keep forever stays an action. -->
+      <div class="row top">
+        <span class="rl"><label for="o-ttl">Delete after</label></span>
+        <span class="rc">
+          <div class="wide"><div class="rail left" data-life hidden><i></i></div></div>
+          <select name="ttl_days" id="o-ttl">
+            <option value="">no change</option>
+            {{- range .TTLOptions}}
+            <option value="{{.Value}}">{{.Label}}</option>
+            {{- end}}
+          </select>
+          <button type="button" class="linkish" data-keep-forever{{if not .Expires}} hidden{{end}}>Keep forever</button>
+          <span class="hint" data-copy-note{{if not .Expires}} hidden{{end}}>copying the link resets the countdown</span>
+        </span>
+        <span class="rs{{if .Expires}} time{{else}} ok{{end}}" data-life-state>{{if .Expires}}{{.Expiry}}{{else}}kept forever{{end}}</span>
+      </div>
+      <div class="row">
+        <span class="rl">Visibility</span>
+        <span class="rc"><label class="switch"><input type="checkbox" name="unlisted"{{if .Unlisted}} checked="checked"{{end}}><i></i>Unlisted</label></span>
+        <span class="rs" data-unlisted-state>{{if .Unlisted}}not in the library{{else}}listed in the library{{end}}</span>
+      </div>
+      <div class="row">
+        <span class="rl"></span>
+        <span class="rc"><button type="submit" class="btn">Save</button></span>
+        <span class="rs ok" data-saved hidden>saved</span>
+      </div>
+      <p class="error" data-error hidden></p>
+    </form>
+    <div class="panel">
+      <div class="row">
+        <span class="rl">Delete</span>
+        <span class="rc"><button type="button" class="btn danger" data-delete data-confirm-text="Really delete">Delete clip</button></span>
+        <span class="rs" data-delete-hint hidden>click again to confirm — the original goes too</span>
+      </div>
+      <p class="error" data-delete-error hidden></p>
+    </div>
+  </section>
+  {{- end}}
+</article>
+{{end}}

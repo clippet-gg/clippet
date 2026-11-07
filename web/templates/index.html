@@ -1,0 +1,290 @@
+{{define "content"}}
+<!-- Without JavaScript this form posts to the CAPTURE endpoint, whose grammar a plain browser form
+     already fits: EVERY text field first, then the file part (§20 errata 58, 139). Parts after the
+     file part are never read, so the file input must be the last control in this form that carries
+     a `name` — title, description, tags, ttl_days, unlisted and link_style all precede it, and it
+     is first on SCREEN because the form is a grid with named areas (app.css `.upload`), which is
+     how the drop frame sits to the left of the fields without an `order` that would part the
+     visual and the focus order. What follows it submits nothing: the rail and the status line. It
+     also has no `multiple` — a second file part would be sent and never read. app.js posts the
+     §8.3 metadata-first grammar to data-upload-api instead, turns `multiple` on, and uploads a
+     batch one file at a time.
+
+     Anything that moves the file input UP in this markup silently re-breaks ttl_days, unlisted and
+     link_style and must be refused. The focus order is title → description → tags → delete after →
+     unlisted → link → Upload → the file picker; the picker is also the whole drop frame, so a
+     pointer never needs the tab order at all (N100). -->
+<form class="panel upload" data-upload data-upload-api="/api/clips" data-upload-sessions="/api/uploads" data-upload-chunk="{{.UploadChunk}}" action="/api/upload" method="post" enctype="multipart/form-data">
+  <div class="upload-fields">
+    <div class="row top">
+      <span class="rl"><label for="u-title">Title</label></span>
+      <span class="rc"><input id="u-title" type="text" name="title" maxlength="200" placeholder="defaults to the file name"></span>
+      <span class="rs"></span>
+    </div>
+    <div class="row top">
+      <span class="rl"><label for="u-desc">Description</label></span>
+      <span class="rc"><textarea id="u-desc" name="description" maxlength="2000" rows="2"></textarea></span>
+      <span class="rs"></span>
+    </div>
+    <div class="row top">
+      <span class="rl"><label for="u-tags">Tags</label></span>
+      <!-- 329 = db.MaxTagsPerClip (10) x db.MaxTagRunes (32) + 9 commas: the WIDEST legal value.
+           Unlike the search box, going over is not silent — an over-long tag string answers 400
+           invalid_tags naming the offending tag or the ten-tag cap — but a control should not
+           invite a value the server will refuse. -->
+      <span class="rc"><input id="u-tags" type="text" name="tags" maxlength="329" placeholder="comma separated"></span>
+      <span class="rs"></span>
+    </div>
+    <div class="row">
+      <!-- The lifetime is CHOSEN in the grammar "Delete after …" (§20 erratum 244): the options
+           complete that sentence, and the no-expiry choice is the word `never`. ttl_days is
+           untouched on the wire: "" = the server default, 0 = never. -->
+      <span class="rl"><label for="u-ttl">Delete after</label></span>
+      <span class="rc">
+        <select id="u-ttl" name="ttl_days">
+          <option value="">{{.DefaultTTL}}</option>
+          {{- range .TTLOptions}}
+          <option value="{{.Value}}">{{.Label}}</option>
+          {{- end}}
+        </select>
+        <label class="switch"><input type="checkbox" name="unlisted"><i></i>Unlisted</label>
+      </span>
+      <span class="rs"></span>
+    </div>
+    <div class="row top">
+      <!-- The link grammar of THIS upload (ROADMAP #35, §20 errata 250 and 264). Two radios, so the
+           no-JavaScript form posts `link_style` as a text field BEFORE the file part exactly as
+           ttl_days and unlisted do; app.js reads the same value into the metadata document. It
+           starts on the account's own default (Settings), which is also what the server resolves
+           when the field is absent — so changing nothing here changes nothing. The hint is one
+           EXAMPLE of each grammar on this instance's own host (erratum 264: an example of each
+           instead of a description) — the server renders both, so the host is the configured
+           one and never a literal here; neither example is a link and neither id is a real clip. -->
+      <span class="rl">Link</span>
+      <span class="rc">
+        <span class="seg" role="radiogroup" aria-label="Link style">
+          <label class="seg-opt"><input type="radio" name="link_style" value="compact"{{if ne .LinkStyle "memorable"}} checked{{end}}><span>Compact</span></label>
+          <label class="seg-opt"><input type="radio" name="link_style" value="memorable"{{if eq .LinkStyle "memorable"}} checked{{end}}><span>Memorable</span></label>
+        </span>
+        <span class="hint">Compact: <code>{{.LinkExamples.Compact}}</code> · Memorable: <code>{{.LinkExamples.Memorable}}</code></span>
+      </span>
+      <span class="rs" data-link-state data-link-default="{{if eq .LinkStyle "memorable"}}memorable{{else}}compact{{end}}">your default</span>
+    </div>
+    <div class="row">
+      <span class="rl"></span>
+      <span class="rc">
+        <button type="submit" class="btn" data-upload-submit>Upload</button>
+        <button type="button" class="btn danger" data-upload-cancel hidden>Cancel</button>
+        <button type="button" class="btn" data-upload-retry hidden>Try again</button>
+        <!-- Shown after "Already in your library." (§20 erratum 326): the same file(s) again, with the
+             duplicate check's opt-out, so one click still makes a second copy. -->
+        <button type="button" class="btn" data-upload-anyway hidden>Upload anyway</button>
+      </span>
+      <span class="rs" data-upload-size></span>
+    </div>
+  </div>
+  <label class="drop upload-file" data-drop>
+    <b>Drop a clip here, or pick a file</b>
+    <span class="hint">Several at a time upload one after another.</span>
+    <!-- One loud control per screen (web/STYLE.md, §20 erratum 313): with nothing picked, Pick a file
+         is the solid one and Upload is hairline; app.js moves `primary` to Upload when a file is
+         picked and back when the batch empties. These are the no-file classes. -->
+    <span class="btn small primary" data-upload-pick>Pick a file</span>
+    <input type="file" name="video" accept="video/*,audio/*,.mp4,.m4v,.mov,.webm,.mkv,.avi,.ts,.mp3,.m4a,.flac,.wav,.ogg,.oga,.opus,.aif,.aiff,.caf,.wv" required>
+    <!-- The upload in flight lives INSIDE the frame, at its foot: the rail, the file's name and
+         the stage phrase. Nothing here carries a `name`, so the file part stays the last field. -->
+    <span class="drop-status">
+      <span class="rail working" data-upload-progress hidden><i data-upload-bar></i></span>
+      <span class="readout"><span class="name" data-upload-name></span><span class="live"><i class="lamp on" data-upload-lamp hidden></i><span class="status" data-upload-status></span></span></span>
+    </span>
+  </label>
+</form>
+
+<section class="library" data-library>
+  <!-- The operator's storage line (ROADMAP #24 and #40, §20 errata 157 and 277).
+       It is rendered only when STORAGE_BUDGET_BYTES is set, a measurement exists
+       and the line has been crossed — and it says, in the sentence itself, WHICH
+       of the two modes this instance is in. Advisory (the default): nothing has
+       stopped working, because a warning an operator cannot act on calmly is
+       worse than no warning. STORAGE_BUDGET_HARD=1: new uploads are being
+       refused, which is the one fact a person whose upload just failed needs, in
+       the one place they will already be looking. -->
+  {{- if .Budget.Over}}
+  <p class="notice budget" role="status" data-storage-budget>Storage is over the instance budget:
+    {{.Budget.Used}} stored against {{.Budget.Budget}} ({{.Budget.Excess}} over).
+    {{- if .Budget.Hard}} New uploads are being refused
+    (<code>STORAGE_BUDGET_HARD=1</code>).{{else}} A warning only —
+    uploads are never refused because of it.{{end}} Delete or expire some clips, or raise
+    <code>STORAGE_BUDGET_BYTES</code>.</p>
+  {{- end}}
+  <div class="libbar">
+    <!-- A plain GET form: search works with JavaScript switched off, and the
+         URL it produces is the same one the tag chips link to (§20 errata
+         114-115). The box's maxlength IS db.MaxSearchRunes: a control that let
+         the user type a value the server then discarded would answer a search
+         with an empty box and no reason. -->
+    <form class="search" method="get" action="/" data-library-search>
+      <label class="field"><span class="sr-only">Search</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+        <input type="search" name="q" maxlength="64" value="{{.Q}}" placeholder="title or description" data-search-input>
+      </label>
+      {{- if not .ScopeOwn}}
+      <label class="switch"><input type="checkbox" name="mine" value="1"{{if .Mine}} checked{{end}} data-search-mine><i></i>Mine only</label>
+      {{- end}}
+      {{- if .Tag}}
+      <input type="hidden" name="tag" value="{{.Tag}}">
+      {{- end}}
+      <button type="submit" class="btn small" data-search-go>Search</button>
+    </form>
+    <!-- The caller's OWN tally (ROADMAP #23, §20 erratum 156): their clips, their
+         bytes, their view total. It is never rendered on a public page, it names
+         no other account, and there is no route that answers it for anybody but
+         the session asking. -->
+    <p class="stats" data-account-stats>{{.Stats.Clips}} clip{{if ne .Stats.Clips 1}}s{{end}} ·
+      {{.Stats.Ready}} ready · {{.Stats.Stored}} ·
+      <span data-stats-views="{{.Stats.Views}}">{{.Stats.Views}} view{{if ne .Stats.Views 1}}s{{end}}</span>
+      {{- if .Stats.Expiring7d}} · {{.Stats.Expiring7d}} expiring within 7 days{{end}}</p>
+  </div>
+  {{- if .ScopeOwn}}
+  <p class="filter" data-library-scope="own">Your own clips only.</p>
+  {{- end}}
+  {{- if .Filtered}}
+  <p class="filter" data-filters{{if .Tag}} data-tag-filter="{{.Tag}}"{{end}}{{if .Q}} data-q-filter="{{.Q}}"{{end}}{{if .Mine}} data-mine-filter="1"{{end}}>Showing {{if .Mine}}your {{end}}clips{{if .Tag}} tagged <span class="tag">{{.Tag}}</span>{{end}}{{if .Q}} matching “{{.Q}}”{{end}} — <a href="{{.ClearURL}}">show all</a></p>
+  {{- end}}
+  <ul class="clips" data-clip-list>
+    {{- range .Clips}}
+    {{template "cliprow" .}}
+    {{- end}}
+  </ul>
+  <p class="empty" data-empty{{if .Clips}} hidden="hidden"{{end}}>{{if .TagOnly}}No clips tagged "{{.Tag}}".{{else if .Filtered}}No clips match that.{{else}}No clips yet — upload one above.{{end}}</p>
+  <!-- Paging, both directions in one line (§20 erratum 266). "Newest clips" is
+       the un-cursored library under the same filters and appears only on a page
+       reached with a cursor; it is not a reverse cursor, which is ROADMAP #4's
+       own leftover and wants a token of its own. -->
+  {{- if or .NewestURL .NextURL}}
+  <p class="more">
+    {{- if .NewestURL}}<a href="{{.NewestURL}}" data-newest>Newest clips</a>{{end}}
+    {{- if and .NewestURL .NextURL}} · {{end}}
+    {{- if .NextURL}}<a href="{{.NextURL}}" data-older>Older clips</a>{{end -}}
+  </p>
+  {{- end}}
+  <!-- The bulk action bar (§20 errata 117-119, amended by 222). It is
+       server-rendered HIDDEN. app.js reveals the per-row CHECKBOXES (it sets
+       data-bulk-ready on the library) and deliberately does NOT unhide this
+       bar: the bar appears with the first tick and goes away with the last, so
+       a page with no client is exactly as it was — nothing to tick, nothing
+       that looks clickable, and every one of these actions still available one
+       clip at a time on that clip's own page. It is a group and not a <form>
+       deliberately — POST /api/clips/bulk takes JSON, so a form that could be
+       submitted without JavaScript could only ever be a 415. It sticks to the
+       bottom of the viewport while the list scrolls under it. -->
+  <div class="bulk" role="group" aria-label="Bulk actions" data-bulk hidden>
+    <div class="bulk-row">
+      <span class="count"><span data-bulk-count>0</span> selected</span>
+      <button type="button" class="linkish" data-bulk-all>select all</button>
+      <button type="button" class="linkish" data-bulk-none>clear</button>
+      <span class="sep"></span>
+      <input type="text" name="tag" maxlength="32" placeholder="tag" aria-label="Tag" data-bulk-tag><button type="button" class="btn" data-bulk-action="tag" data-bulk-needs="tag">Add tag</button>
+      <span class="sep"></span>
+      <!-- The select rests on a no-op, like the owner's row: with `never` last, a resting choice of
+           `1 day` would let a stray Set schedule every ticked clip for tomorrow. app.js skips the
+           request while it says `no change` (§20 erratum 244). -->
+      <label for="bulk-ttl">Delete after</label><select id="bulk-ttl" name="ttl_days" data-bulk-ttl>
+        <option value="">no change</option>
+        {{- range .TTLOptions}}
+        <option value="{{.Value}}">{{.Label}}</option>
+        {{- end}}
+      </select><button type="button" class="btn" data-bulk-action="ttl" data-bulk-needs="ttl">Set</button>
+      {{- if .Collections}}
+      <span class="sep"></span>
+      <select name="collection_id" aria-label="Collection" data-bulk-collection>
+        {{- range .Collections}}
+        <option value="{{.ID}}">{{.Title}}</option>
+        {{- end}}
+      </select><button type="button" class="btn" data-bulk-action="collection" data-bulk-needs="collection">Add to collection</button>
+      {{- end}}
+      <span class="sep"></span>
+      <button type="button" class="btn danger" data-bulk-action="delete" data-confirm-text="Really delete" data-bulk-delete>Delete</button>
+    </div>
+    <p class="hint" data-bulk-hint hidden>click Delete again to destroy the selected clips</p>
+    <p class="status" data-bulk-status></p>
+    <p class="error" data-bulk-error hidden></p>
+  </div>
+</section>
+
+<section class="collections" data-collections>
+  <h2>Collections</h2>
+  <ul class="colgrid" data-collection-list>
+    {{- range .Collections}}
+    <li data-collection-id="{{.ID}}">
+      <a class="colcard" href="{{.PageURL}}"><span class="stack" aria-hidden="true"><i></i><i></i><i></i></span>{{.Title}}<span class="sub">{{.ClipCount}} clip{{if ne .ClipCount 1}}s{{end}}</span></a>
+    </li>
+    {{- end}}
+  </ul>
+  <p class="empty" data-collections-empty{{if .Collections}} hidden="hidden"{{end}}>No collections yet.</p>
+  <form class="newcol" data-collection-new action="/api/collections" method="post">
+    <label class="sr-only" for="c-new">New collection</label>
+    <input id="c-new" type="text" name="title" maxlength="200" placeholder="New collection" required>
+    <button type="submit" class="btn">Create</button>
+    <noscript><p class="hint">Making a collection needs JavaScript in this browser.</p></noscript>
+    <p class="error" data-error hidden></p>
+  </form>
+</section>
+{{end}}
+
+{{define "cliprow"}}
+    <li class="clip-row" data-clip-id="{{.ID}}" data-state="{{.State}}"{{if .ProgressURL}} data-progress-url="{{.ProgressURL}}"{{end}}{{if .IsOwn}} data-own{{end}}>
+      {{- if .IsOwn}}
+      <label class="pick"><input type="checkbox" data-pick value="{{.ID}}"><span class="sr-only">Select {{.Title}}</span></label>
+      {{- else}}
+      <!-- A row you do not own holds the same cell open and nothing else: in a mixed library
+           every thumbnail then starts on the same line once the bar is live. Empty, and out of
+           the accessibility tree — there is nothing here to select. -->
+      <span class="pick" aria-hidden="true"></span>
+      {{- end}}
+      <span class="thumb">
+        <a class="frame{{if not .PosterURL}} empty{{end}}" href="{{.PageURL}}" data-thumb>
+          {{- if .PosterURL}}<img src="{{.PosterURL}}" alt="" loading="lazy">{{else}}<span class="badge badge-{{.State}}" data-badge>{{.State}}</span>{{end -}}
+          {{- if .Duration}}<span class="duration" data-duration>{{.Duration}}</span>{{end -}}
+        </a>
+        {{- if .ProgressURL}}
+        <!-- The rail (web/STYLE.md): dashed while queued, amber while the server works. app.js
+             writes the fill width and swaps the two classes from the batched poll; a ready row
+             has no rail, because nothing about it is still happening. -->
+        <div class="rail{{if eq .State "queued"}} queued{{else}} working{{end}}" data-rail><i data-progress-bar></i></div>
+        {{- end}}
+      </span>
+      <div class="info">
+        <a class="title" href="{{.PageURL}}" title="{{.Title}}" data-title>{{.Title}}</a>
+        <div class="sub">
+          <span>by {{.Owner}}</span>
+          <span>{{.Uploaded}}</span>
+          <span data-expiry>{{.Expiry}}</span>
+          {{- if .Resolution}}
+          <span data-resolution>{{.Resolution}}</span>
+          {{- end}}
+          {{- if .Unlisted}}
+          <span class="flag">unlisted</span>
+          {{- end}}
+          {{- if .IsOwn}}
+          <span data-views="{{.Views}}">{{.Views}} view{{if ne .Views 1}}s{{end}}</span>
+          {{- end}}
+        </div>
+        {{- if .Tags}}
+        <div class="tags" data-tags>
+          {{- range .Tags}}
+          <a class="tag" href="{{.URL}}">{{.Tag}}</a>
+          {{- end}}
+        </div>
+        {{- end}}
+        {{- if .ProgressURL}}
+        <!-- The rail says something is happening; StageNote says WHAT, in two or three words from
+             the transcode job's own stage (§20 erratum 224 — the owner's first look: what processing
+             is and where it happens). It is server-rendered so a reader with
+             no JavaScript sees it, and app.js writes the same words, plus a percentage, over this
+             one line as the batched poll reports them. -->
+        <p class="status" data-status>{{.StateLabel}}{{if .StageNote}} · {{.StageNote}}{{end}}</p>
+        {{- end}}
+      </div>
+    </li>
+{{end}}
