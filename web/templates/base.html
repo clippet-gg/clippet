@@ -120,6 +120,7 @@
   keeps the three-way picker, which is the only place `System` can be chosen.
 */}}
 {{- if or .Viewer .Wordmark}}
+<a class="skip sr-only" href="#main">Skip to content</a>
 <header class="top">
   <a class="wordmark" href="/" aria-label="clippet">cli<span class="pp">pp</span>et</a>
   {{- with .Badge}}
@@ -156,7 +157,7 @@
   </div>
 </header>
 {{- end}}
-<main class="page">
+<main class="page" id="main">
 {{template "content" .}}
 </main>
 </body>

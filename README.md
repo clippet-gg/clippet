@@ -74,7 +74,7 @@ served straight from the bucket instead of through the app
 - Links play inline in Discord and X. The card shows your domain, the title and the length, with a
   green edge once the clip is ready.
 - Files browsers can already play are not re-encoded. The original is served as is, with location and
-  device metadata stripped.
+  device metadata stripped. The file you uploaded, metadata included, stays in storage for your own download.
 - Anything else is re-encoded once at its original resolution and frame rate. Large clips also get a
   smaller copy for the card, and viewers can pick the quality.
 - Audio files work too, with a waveform as the card.
@@ -147,8 +147,9 @@ reduced motion.
 
 - **No telemetry, analytics or update checks.** Unless you enable Discord features or webhooks, the only
   outbound connection is to your bucket, and CI fails if a new one is added.
-- **No watermarks or ads.** Nothing is added to your video, and watch pages have no sign-up prompts or
-  related-clips feed.
+- **No watermarks or ads.** Nothing is added to your video. The smaller copy made for the card carries a
+  one-line quality label by default, and `LIGHT_TAG_TEXT=off` removes it. Watch pages have no sign-up
+  prompts or related-clips feed.
 - **No tiers or per-user quotas.** The only limits are the upload size cap, a rate limit, and the optional
   storage budget.
 - **No social features.** No likes, comments, followers, feeds or public browse page. View counts are

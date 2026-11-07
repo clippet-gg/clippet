@@ -10,7 +10,7 @@
        card's audiogram, on the page. A row with no peaks has no attributes and no layer. -->
   <div class="player audio">
     <div class="audio-wave"{{if .Peaks}} data-wave="{{.WaveGeometry}}" data-peaks="{{.Peaks}}"{{end}}>
-      <img class="audio-picture" src="{{.PosterURL}}" alt="">
+      <img class="audio-picture" src="{{.PosterURL}}" alt="Waveform">
     </div>
     <audio controls preload="metadata" src="{{.VideoURL}}" data-view-url="{{.ViewURL}}" data-media-title="{{.Title}}" data-artwork="{{.PosterURL}}"></audio>
   </div>
@@ -177,7 +177,7 @@
   <p class="error" data-owner-error hidden></p>
   {{- end}}
   {{- if and .IsOwner .Ready}}
-  <img class="gif-preview" data-gif-img alt="" hidden>
+  <img class="gif-preview" data-gif-img alt="GIF preview" hidden>
   {{- end}}
   {{- end}}
   <div class="titleblock">

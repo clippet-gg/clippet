@@ -134,6 +134,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 ::placeholder { color: var(--faint); opacity: 1; }
 [hidden] { display: none !important; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* The skip link: hidden until it holds keyboard focus, then drawn at the top-left over the header (the compliance
+   audit of 2026-11-07, item 15). */
+.skip:focus-visible { position: fixed; top: 8px; left: 8px; width: auto; height: auto; clip-path: none; z-index: 20; background: var(--surface); color: var(--text); padding: 8px 12px; border-radius: 6px; }
 main.page { max-width: 1040px; margin: 0 auto; padding: 24px; }
 /* Every one-column grid on the site is minmax(0, 1fr), never auto: a table or a long mono line
    inside a grid item must shrink and scroll in its own box, not widen the page. */

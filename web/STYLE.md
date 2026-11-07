@@ -25,7 +25,7 @@ loudest thing on any screen.
 | `--text` / `--primary` | `#17181C` | `#ECE9E2` | ink, and the one solid button |
 | `--primary-text` | `#FFFFFF` | `#191816` | text on the solid button |
 | `--muted` | `#5B5F67` | `#A9A59C` | secondary text, row labels |
-| `--faint` | `#666971` | `#959087` | hints, timestamps |
+| `--faint` | `#666971` | `#959087` | hints, timestamps (4.5:1 on every ground since 2026-11-07) |
 | `--time` | `#D98E12` | `#F0B24A` | amber as a fill: working rail, handles, lifetime rail, the pulsing lamp |
 | `--time-text` / `--warn` | `#8A5400` | `#F0B24A` | amber as text: `23 days left`, the token-shown-once notice |
 | `--marker` | `rgba(217,142,18,.42)` | `rgba(240,178,74,.45)` | the stroke under a link |
