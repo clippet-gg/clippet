@@ -6,6 +6,10 @@ desktop app has a version of its own and is not listed here unless a tag's point
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the design record behind every item is
 `DESIGN.md` §20.
 
+## 2026.11.07
+
+The first release from the public repository github.com/clippet-gg/clippet, under the Functional Source License (FSL-1.1-ALv2): a rewritten README, golangci-lint and govulncheck in CI, a digest-pinned cross-compiled Dockerfile, a personal-data tripwire in check.sh, and the desktop app at 1.0.0.
+
 ## 2026.11.03
 
 `SETUP_WIZARD=off` shuts the web `/setup` wizard and its first-run door (the steps view stays; the desktop app sets it); on a Pass box `/setup` answers 404 except for that view; the Discord `/upload` and `/clip` paths never tell a later submit there is no clip when the clip exists.
