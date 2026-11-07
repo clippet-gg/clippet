@@ -21,11 +21,11 @@ loudest thing on any screen.
 | `--surface` | `#FFFFFF` | `#211F1C` | panels, rows, forms |
 | `--surface-2` | `#F4F5F6` | `#2A2825` | fields, the filmstrip trough, the drop frame |
 | `--line` | `#D5D7DB` | `#34312D` | rules between rows, the empty rail |
-| `--line-strong` | `#A7ABB3` | `#514D47` | field edges, the dashed queued rail, the grey lamp |
+| `--line-strong` | `#878A90` | `#787269` | field edges, the dashed queued rail, the grey lamp |
 | `--text` / `--primary` | `#17181C` | `#ECE9E2` | ink, and the one solid button |
 | `--primary-text` | `#FFFFFF` | `#191816` | text on the solid button |
 | `--muted` | `#5B5F67` | `#A9A59C` | secondary text, row labels |
-| `--faint` | `#787C85` | `#837F77` | hints, timestamps |
+| `--faint` | `#666971` | `#959087` | hints, timestamps |
 | `--time` | `#D98E12` | `#F0B24A` | amber as a fill: working rail, handles, lifetime rail, the pulsing lamp |
 | `--time-text` / `--warn` | `#8A5400` | `#F0B24A` | amber as text: `23 days left`, the token-shown-once notice |
 | `--marker` | `rgba(217,142,18,.42)` | `rgba(240,178,74,.45)` | the stroke under a link |

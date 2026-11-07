@@ -50,6 +50,7 @@ Bash on Windows works too, with one quirk, and the two places where Windows diff
 - [35. Where clips live: the setup wizard](#35-where-clips-live-the-setup-wizard)
 - [36. Clippet Pass: a name on clippet.gg, the official bot, the portal](#36-clippet-pass-a-name-on-clippetgg-the-official-bot-the-portal)
 - [37. The homepage on the apex](#37-the-homepage-on-the-apex)
+- [38. What this instance records about people](#38-what-this-instance-records-about-people)
 - [18. Not covered here](#18-not-covered-here)
 
 One entry per `## N.` heading, in **file order** — not numeric order. Section numbers are cross-
@@ -2455,6 +2456,10 @@ panel, and it runs inside the app container against the same SQLite file as ever
 | `closed` | Nobody. Accounts are added with `admin users create` (§19.4). |
 | `members` | Any member of a server bound to this instance (§30.3), through the bot's `/signin` (§30.12). `/register` is closed exactly as under `closed`. |
 | `role:<role id>` | A member of a bound server who holds that ONE role, through `/signin`. `/register` is closed. |
+
+An operator who opens registration to the public (`open`, or a Discord mode on a public server) decides who may sign up,
+and the rules on children's data (COPPA in the US, the GDPR's age of consent in the EU) look at that operator; the form
+itself collects a username and a password and nothing else (§38).
 
 The two Discord modes need the bot (§30.2; on the official bot, §30.8). A member's first `/signin`
 makes their account, named after their Discord username and linked to their Discord id, with no
@@ -7432,6 +7437,84 @@ and the public smoke (`scripts/smoke-public.sh`, T3) all send it, so a run again
 asserts on the app, not the homepage. The app itself ignores the header; on a self-host it changes nothing.
 
 ---
+
+## 38. What this instance records about people
+
+If you run Clippet for other people, you are the one responsible for what it keeps about them, and any privacy notice
+or imprint your jurisdiction expects is yours to publish. This section is the inventory to write it from. The product
+ships no policy text and shows none: a watch page carries nothing but the wordmark (§28), and the front door nothing
+else, by design. The maintainer processes no data of your users; nothing leaves the instance except what §38.3 and §38.5
+name.
+
+### 38.1 Accounts
+
+| What | Where | For how long |
+|---|---|---|
+| The username, a bcrypt hash of the password, the creation time | `users` | until the account is removed (§38.6) |
+| The account's upload defaults (lifetime, unlisted, link style) and the owner flag | `users` | the same |
+| The Discord user id, Discord username and the time of linking | `users` | only after the account's owner links Discord in Settings (§19.6); the OAuth scope is `identify` alone, so no email and no server list is ever read; the Settings button or `admin users unlink` clears the three columns |
+| A browser session: a sha256 of the cookie (never the cookie itself), created, expires, last seen, and the browser's `User-Agent` string capped at 256 bytes (shown back to the user under Settings → Browsers) | `sessions` | until sign-out, `SESSION_TTL` (30 days, sliding, under the `SESSION_MAX_TTL` ceiling, §19.3) or `admin sessions revoke` |
+| An API token: a hash, its prefix, name, scopes, last use, revocation time | `api_tokens` | until revoked (§19.5) |
+| A one-time Discord sign-in link: the Discord id, username and display name | `signin_tokens` | 300 seconds (§30.12) |
+| A Discord server binding: the server id and the account it routes to | `discord_guilds` | until unbound (§30.3) |
+
+### 38.2 Clips
+
+| What | Where | For how long |
+|---|---|---|
+| Title, description, tags, collections, the unlisted flag, lifetime and expiry, sizes, codecs, dimensions, the name of the uploaded file, the trim window and poster choice, and a view counter (one integer; no viewer is stored) | `clips`, `clip_tags`, `collections` | until the clip is deleted or expires (§10) |
+| The media: the uploaded ORIGINAL, with whatever the camera wrote into it (GPS, device, capture time), which only the owner can download; the published renditions, which are stripped of that metadata (§27); the poster, GIF and filmstrip | the store, under `clips/<id>/` | the same; the objects go with the row (§24.4 names the orphans) |
+
+### 38.3 Viewers
+
+Nothing about a viewer is written to disk. The first `play` on a watch page POSTs `/api/clips/{id}/view`; the dedupe
+key is a truncated hash of the viewer's IP kept in memory for 30 minutes, at most 50,000 entries, and lost at a
+restart. Rate limits are keyed on the client IP, in memory. `bytes_served` is one number per UTC day (§31.3). With
+`MEDIA_DELIVERY=redirect` the viewer's browser fetches the media from your bucket's own origin, so your bucket vendor's
+logs see the viewer (§33); in the default `proxy` mode they see only this instance.
+
+### 38.4 Cookies and browser storage
+
+| Name | Flags | Lifetime | Purpose |
+|---|---|---|---|
+| `clippet_session` (`SESSION_COOKIE_NAME`; `__Host-clippet_session` on a Pass name) | `HttpOnly`, `SameSite=Lax`, `Secure` when `PUBLIC_BASE_URL` is https | `SESSION_TTL`, sliding | the signed-in session |
+| `clippet_session_discord` | the same flags | 10 minutes | the state of a Discord sign-in round trip |
+| `theme` | `SameSite=Lax`, `Secure` on https, readable by the page's script | 365 days, or removed for *System* | the light/dark choice of this browser; set only when the visitor presses the theme glyph or picker (§28) |
+
+`localStorage` holds the player's `muted`, `loop` and `quality` choices; `sessionStorage` holds two keys for the
+wordmark's animation. None of these identify a person, and none leaves the browser. There is no analytics, no
+tracking and no third-party cookie, so no consent banner is owed under the EU's ePrivacy rules: the session cookies are
+strictly necessary, and the theme is a preference the visitor sets.
+
+### 38.5 Logs and copies
+
+The access log is one line per request on the container's stdout: method, path, status, bytes, duration, a request id
+and `remote`, the TCP peer's address, which behind a tunnel or reverse proxy is the proxy's own. On a sign-in outcome
+the line also carries `client_ip`, the address resolved through `TRUSTED_PROXIES` (§4). Paths that carry a token are
+written as `/in/{token}`. How long these lines live is Docker's decision, not Clippet's: set a `logging:` block with
+`max-size` and `max-file` on the `app` service, or your log driver's retention, and you can write the number down.
+
+Two copies outlive a deletion for a while. The database snapshot in the store (`_clippet/db.sqlite`, §15) is rewritten
+at most every `DB_SNAPSHOT_EVERY` (10 minutes) after a change, so a removed row leaves it on the next write. Your own
+`admin backup` files hold every row above, session and token hashes included, until you rotate them (§15.5).
+
+### 38.6 Removing a person
+
+A user can do most of it themselves: delete their clips (one, or every ticked row), delete their collections, sign out
+every browser, revoke their tokens and unlink Discord, all under Settings. There is no delete-account button, so the
+account row itself is yours to remove. The recipe, in this order:
+
+```sh
+docker compose exec -T app clippet admin ls --owner <username>            # their clips
+docker compose exec -T app clippet admin expire <id>                      # each one; the sweeper removes the objects (§10)
+docker compose exec -T app clippet admin collections ls --owner <username>
+docker compose exec -T app clippet admin collections rm <id> --owner <username>
+docker compose exec -T app clippet admin sessions revoke <username>       # every browser they were signed in on
+docker compose exec -T app clippet admin users prune '<username>' --older-than 1s --no-clips   # a duration, must be positive
+```
+
+`users prune` refuses an account that still owns a clip or a collection, which is why the clips and collections go first;
+it removes the account's sessions and tokens with the row. Then rotate the backups you keep (§38.5).
 
 ## 18. Not covered here
 

@@ -1,4 +1,4 @@
-The two font files beside this notice are self-hosted copies of two open-source
+The three font files beside this notice are self-hosted copies of two open-source
 typefaces, both licensed under the SIL Open Font License, Version 1.1, whose full
 text follows. Clippet's own code is not covered by this licence; this file is the
 fonts' licence and nothing else.
@@ -9,6 +9,9 @@ fonts' licence and nothing else.
   spline-sans-mono.woff2  Spline Sans Mono (variable, weight 300-700, latin subset)
                           Copyright 2022 The Spline Sans Mono Project Authors
                           (the SorkinType SplineSansMono repository on GitHub)
+  spline-sans-mono.ttf    Spline Sans Mono, a static instance at weight 500 of the same
+                          family, drawn into every poster's duration label by the server
+                          and installed into the image; same authors, same licence
 
 Both files are the latin-subset woff2 builds that the Google Fonts service serves
 for these families (Spline Sans v16, Spline Sans Mono v13), downloaded once at

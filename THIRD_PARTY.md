@@ -8,7 +8,7 @@ item's licence. Clippet's own code is under [`LICENSE`](LICENSE); nothing below 
 | what | where | licence |
 |---|---|---|
 | The EFF Large Wordlist (7,776 words, curated to `^[a-z]{3,9}$` — the four hyphenated entries dropped, nothing else), the source of the memorable link ids | `internal/ids/eff_large_wordlist.txt`, embedded in the binary by `internal/ids/words.go` | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), the Electronic Frontier Foundation — <https://www.eff.org/dice> |
-| Spline Sans (variable, 300–700, latin subset) and Spline Sans Mono, the two typefaces every page is drawn with; served from the binary, fetched from nowhere | `web/static/fonts/` | [SIL Open Font License 1.1](web/static/fonts/OFL.txt) (the full text is that file; the copyright lines name the Spline Sans and Spline Sans Mono project authors) |
+| Spline Sans (variable, 300–700, latin subset) and Spline Sans Mono, the two typefaces every page is drawn with, served from the binary and fetched from nowhere; plus `spline-sans-mono.ttf`, a static weight-500 instance of Spline Sans Mono the server draws into every poster's duration label (installed into the image) | `web/static/fonts/` | [SIL Open Font License 1.1](web/static/fonts/OFL.txt) (the full text is that file; the copyright lines name the Spline Sans and Spline Sans Mono project authors) |
 
 ## Installed into the image at build time (not in the repository)
 

@@ -47,10 +47,10 @@
   --surface: #FFFFFF;
   --surface-2: #F4F5F6;
   --line: #D5D7DB;
-  --line-strong: #A7ABB3;
+  --line-strong: #878A90;
   --text: #17181C;
   --muted: #5B5F67;
-  --faint: #787C85;
+  --faint: #666971;
   --ok: #0E7C4F;
   --ok-ink: #FFFFFF;
   --time: #D98E12;
@@ -74,10 +74,10 @@
     --surface: #211F1C;
     --surface-2: #2A2825;
     --line: #34312D;
-    --line-strong: #514D47;
+    --line-strong: #787269;
     --text: #ECE9E2;
     --muted: #A9A59C;
-    --faint: #837F77;
+    --faint: #959087;
     --ok: #4CD69A;
     --ok-ink: #062A1B;
     --time: #F0B24A;
@@ -99,10 +99,10 @@
   --surface: #211F1C;
   --surface-2: #2A2825;
   --line: #34312D;
-  --line-strong: #514D47;
+  --line-strong: #787269;
   --text: #ECE9E2;
   --muted: #A9A59C;
-  --faint: #837F77;
+  --faint: #959087;
   --ok: #4CD69A;
   --ok-ink: #062A1B;
   --time: #F0B24A;
@@ -233,7 +233,7 @@ header.top .bar-end { display: flex; align-items: center; gap: 18px; min-width: 
 :root[data-badge] .wordmark:not(.sad) .eyes .mouth { stroke: var(--line-strong); }
 /* The overlay's ground is the player's own black whatever the page theme, so it spends a fixed value
    rather than a token — as it already does for its green and its text (erratum 246). The grey is the
-   dark palette's --faint (#837F77, about 5.2:1 on black) and NOT its --line-strong (#514D47, about
+   dark palette's --faint (#837F77, about 5.2:1 on black) and NOT its --line-strong (#787269 since the contrast pass of 2026-11-07, #514D47 before; about
    2.5:1), which at 16 px over a poster reads as a missing span rather than a grey one. The mouth takes
    the same value and must be spelled out: without this line it would inherit the PAGE theme's
    --line-strong from the rule above, and the overlay would carry two different greys. Both rules come
