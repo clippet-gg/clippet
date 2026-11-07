@@ -1,16 +1,16 @@
 <p align="center">
-  <img src="docs/brand/og/clippet-card-1200x630.png" width="480" alt="The clippet wordmark on its dark tile, with a green line under the double p">
+  <img src="docs/brand/og/clippet-card-1200x630.png" width="480" alt="The clippet logo on a dark tile, with a green line under the double p">
 </p>
 
 # Clippet
 
-**Upload a clip. Get a link.** Clippet is a clip server you run yourself. You upload a video or an
-audio file, the server transcodes it, and the link plays as a card in Discord and on X.
+**Upload a clip. Get a link.** Clippet is a self-hosted clip server. Upload a video or audio file, get a
+short link, and the link plays as an embedded card in Discord and X.
 
 ## Quick start
 
-You need Docker Engine 25 or newer, or Docker Desktop, with Compose v2. Go, Node and ffmpeg live inside
-the image.
+You need Docker Engine 25 or newer, or Docker Desktop, with Compose v2. Everything else runs inside the
+container.
 
 ```sh
 git clone https://github.com/clippet-gg/clippet.git && cd clippet
@@ -18,188 +18,188 @@ cp .env.example .env            # every value has a working default
 docker compose up -d --build    # one container
 ```
 
-Open <http://localhost:8481/> and register. Registration takes one account and then closes, so a public
-URL never shows a signup form. Upload a clip and share its link. The clips land in `~/Videos/clippet`
-on this machine. Back up that folder and you have backed up the instance.
+Open <http://localhost:8481/> and create an account. Registration closes after the first account, so
+nobody else can sign up if the URL is public. Upload a clip and share the link. Clips are stored in
+`~/Videos/clippet`; backing up that folder backs up everything.
 
 > [!IMPORTANT]
-> On Linux, Docker creates that folder owned by root and the app runs as uid 10001. Give it to that uid
-> once, then restart the app. Docker Desktop on macOS and Windows needs no such step.
+> On Linux, Docker creates that folder owned by root, and the app runs as uid 10001. Fix the ownership
+> once and restart. Docker Desktop on macOS and Windows does not need this.
 >
 > ```sh
 > sudo chown -R 10001:10001 ~/Videos/clippet
 > docker compose restart app
 > ```
 
-The first build compiles the server and copies in a static ffmpeg, so expect a few minutes the first
-time and seconds after. Stop the server with `docker compose down`. The clips and a copy of the
-database stay in the folder; the live database is the volume `clippet_app_data`, which only
-`down -v` removes. To serve on another port, set `CLIPPET_PUBLISH=127.0.0.1:PORT` in `.env`. To keep
-the clips somewhere else, set `STORAGE_DIR_HOST` before the first `up`.
+The first build takes a few minutes; later builds take seconds. Stop with `docker compose down`. Clips
+and a copy of the database are in the folder; the live database is in the Docker volume
+`clippet_app_data`, which only `down -v` deletes. To change the port, set
+`CLIPPET_PUBLISH=127.0.0.1:PORT` in `.env`. To store clips somewhere else, set `STORAGE_DIR_HOST` before
+the first start.
 
-Configuration is read once at boot. After editing `.env`, run `docker compose up -d` to recreate the
-container. `clippet admin users create` adds people after the first account
-([accounts](DEPLOY.md#19-accounts-sessions-and-tokens)).
+Configuration is read at startup, so after editing `.env` run `docker compose up -d` to apply it. To add
+more users, run `clippet admin users create` ([accounts](DEPLOY.md#19-accounts-sessions-and-tokens)).
 
-## Going public
+## Public URL and https
 
-A card needs a public https origin. X draws a player only over https. Discord fetches the card from
-its own servers, so a `localhost` or LAN-only origin gets a bare link.
+Embedded cards only work from a public https URL. X only shows a player over https, and Discord loads
+the card from its own servers, so `localhost` or a LAN address shows a plain link.
 
-For a quick try, one `docker run` brings up a throwaway Cloudflare tunnel with no account, no port
-forward and no certificate ([quick tunnel](DEPLOY.md#3-going-public-cloudflare-quick-tunnel)). For
-anything permanent, use a named tunnel on a domain you own, or your own reverse proxy with Caddy or
-nginx ([your own domain](DEPLOY.md#26-behind-your-own-domain-caddy-and-nginx)).
+To try it quickly, one `docker run` starts a temporary Cloudflare tunnel with no account, port
+forwarding or certificate ([quick tunnel](DEPLOY.md#3-going-public-cloudflare-quick-tunnel)). For a
+permanent setup, use a named tunnel on your own domain, or a reverse proxy like Caddy or nginx
+([your own domain](DEPLOY.md#26-behind-your-own-domain-caddy-and-nginx)).
 
-Whichever origin you end up on, set `PUBLIC_BASE_URL` in `.env` to exactly what the browser types.
-Every card URL is built from it, and a mismatch fails silently.
+Set `PUBLIC_BASE_URL` in `.env` to the URL people will use. Card URLs are built from it, and if it is
+wrong the cards silently stop working.
 
-## Where the clips live
+## Storage
 
-A folder on this machine is a complete instance. A NAS is the same folder, mounted; set
-`STORAGE_DIR_HOST` to point at it ([a directory](DEPLOY.md#32-a-directory-instead-of-a-bucket)).
+By default, clips are stored in a folder on this machine. To use a NAS, mount the share and point
+`STORAGE_DIR_HOST` at the mount ([using a directory](DEPLOY.md#32-a-directory-instead-of-a-bucket)).
 
-A bucket you own is optional: Cloudflare R2, Backblaze B2, Amazon S3, or any S3-compatible server.
-Open <http://localhost:8481/setup>, answer five questions, paste the `.env` block it prints, and press
-**Check now** to prove the store answers. The wizard collects no credential
-([the setup wizard](DEPLOY.md#35-where-clips-live-the-setup-wizard)). With a bucket, media can be
-served from the bucket's own origin instead of streaming through the app
+You can also use an S3-compatible bucket: Cloudflare R2, Backblaze B2, Amazon S3, or any other S3
+server. Open <http://localhost:8481/setup>, pick your provider, and it prints the `.env` block to paste;
+**Check now** tests the connection. The wizard does not store your credentials
+([setup wizard](DEPLOY.md#35-where-clips-live-the-setup-wizard)). With a bucket, media can also be
+served straight from the bucket instead of through the app
 ([serving by redirect](DEPLOY.md#33-serving-media-by-redirect)).
 
-`clippet admin storage migrate` moves an existing instance between a folder and a bucket, either way.
+`clippet admin storage migrate` moves an existing instance between a folder and a bucket in either direction.
 
-## What it does
+## Features
 
 **Sharing** ([quality](DEPLOY.md#27-quality-tiers-original-full-light), [links](DEPLOY.md#29-links-what-a-share-url-looks-like-and-the-two-id-grammars))
 
-- The link plays inline in Discord and on X. The card names your host, shows the title and the length,
-  and its edge turns green when the clip is ready.
-- A file every browser already plays is served as uploaded. It is never re-encoded, and the one-second
-  container fix strips a phone's location and device name.
-- Anything a browser cannot play gets one re-encode at its own resolution and frame rate. Large clips
-  get a smaller copy for the card, and viewers get a quality picker with real numbers.
-- An audio file is a clip too. Its card is a waveform drawn from the clip's own loudness.
-- Links are twelve characters, or three words if you prefer: `your.host/aZ3kQ9xB2mLp` or
+- Links play inline in Discord and X. The card shows your domain, the title and the length, with a
+  green edge once the clip is ready.
+- Files browsers can already play are not re-encoded. The original is served as is, with location and
+  device metadata stripped.
+- Anything else is re-encoded once at its original resolution and frame rate. Large clips also get a
+  smaller copy for the card, and viewers can pick the quality.
+- Audio files work too, with a waveform as the card.
+- Links are a 12-character id or three words: `your.host/aZ3kQ9xB2mLp` or
   `your.host/PurpleUpdateCharacter`.
-- Every share page carries oEmbed, so Slack and most forum and wiki software unfurl it too.
+- Share pages support oEmbed, so Slack and most forums and wikis show a preview as well.
 
 **Uploading** ([capture tools](DEPLOY.md#9-capture-tools-sharex-replays-obs-curl), [uploading](DEPLOY.md#23-uploading))
 
-- The browser form takes several files at once. Title, tags and lifetime typed once apply to all.
-- ShareX, RePlays, OBS scripts and `curl` post to `/api/upload` with a token. A ShareX config is minted
-  in one click. The reply waits until the card works, so the link on your clipboard plays on the first paste.
-- A tool that can only POST a file gets an inbound URL. The URL is the credential, and uploading is all it can do.
-- A video dropped at the root of the media folder becomes a clip
-  ([the drop folder](DEPLOY.md#34-the-drop-folder-put-a-video-in-it-and-it-becomes-a-clip)).
-  `clippet admin import` brings in a folder of clips you already have.
-- On Android, install the site and Clippet joins the system Share list.
-- Each clip can expire after 1, 7, 30 or 90 days, or never
+- Upload several files at once from the browser. The title, tags and lifetime apply to all of them.
+- ShareX, RePlays, OBS scripts and `curl` can upload to `/api/upload` with an API token (the ShareX
+  config is one click). The response waits until the Discord card is ready, so the link works the first
+  time you paste it.
+- For tools that can only POST a file, create an inbound URL. The token is in the URL, and it can only upload.
+- Drop a video into the media folder and it becomes a clip
+  ([drop folder](DEPLOY.md#34-the-drop-folder-put-a-video-in-it-and-it-becomes-a-clip)).
+  `clippet admin import` imports an existing folder of clips.
+- On Android, install the site as an app and Clippet appears in the Share menu.
+- Clips can expire after 1, 7, 30 or 90 days, or never
   ([lifetime](DEPLOY.md#10-clip-lifetime-ttl-keep-alive-keep-forever)).
 
 **Discord** ([the bot](DEPLOY.md#30-the-discord-bot-upload-clip-and-enrich-in-your-own-server), [auto-post](DEPLOY.md#11-discord-auto-post))
 
-- A webhook posts every ready clip to one channel, or a channel per tag. A plain JSON webhook posts to a URL of your own.
-- The optional bot adds `/upload`, `/clip` and an **Enrich** message command to your server. Build a Discord
-  application of your own, or connect the free official bot to your instance.
-- Clippet Auto turns a video posted in a bound server into a Clippet link, with one button or no press at all.
-  It is off by default and is the only part of Clippet that reads a channel.
+- Post every new clip to a channel, or a channel per tag, through a webhook. A generic JSON webhook can
+  notify any URL.
+- An optional bot adds `/upload`, `/clip` and an **Enrich** message command to your server. Use your own
+  Discord application, or connect the free official bot.
+- Clippet Auto converts videos posted in a server into Clippet links, with a button or automatically.
+  It is off by default and is the only feature that reads channel messages.
 
-**Your library** ([the library](DEPLOY.md#20-the-library), [tags and collections](DEPLOY.md#14-tags-and-collections))
+**Library** ([the library](DEPLOY.md#20-the-library), [tags and collections](DEPLOY.md#14-tags-and-collections))
 
-- Tags filter the library and never show on a watch page. Collections live at an unguessable `/c/{id}`.
-- Search, a **Mine only** filter, and bulk actions over ticked rows.
-- Trim a clip on the server with two handles over a filmstrip of its own frames
-  ([trim](DEPLOY.md#12-trim)). Make a looping GIF on demand ([GIF](DEPLOY.md#13-gif-previews)).
-- Put a different file under the same link. The address, title, tags and view count stay.
-- Pause the player on the frame you want and press **Use this frame** to make it the poster.
-- Every viewer can download a ready clip and copy an embed. `?autoplay`, `?muted` and `?loop` work on `/embed/{id}`.
+- Tags for filtering (never shown to viewers) and collections at unguessable `/c/{id}` URLs.
+- Search, a **Mine only** filter, and bulk actions.
+- Trim a clip on the server with a filmstrip scrubber ([trim](DEPLOY.md#12-trim)). Generate a looping
+  GIF ([GIF](DEPLOY.md#13-gif-previews)).
+- Replace the video behind a link without changing the URL, title, tags or view count.
+- Pick any frame as the thumbnail.
+- Download and embed buttons on every clip. `/embed/{id}` takes `?autoplay`, `?muted` and `?loop`.
 
-The interface follows your system's theme. Its fonts ship inside the binary, so nothing is fetched to
-draw a page. The wordmark's double p is a face: it follows the cursor, blinks when an upload lands and
-smiles when a clip is ready. Never under reduced motion.
+The UI follows your system theme and loads nothing from third parties. The "pp" in the logo is a face:
+it follows the cursor, blinks when an upload lands and smiles when a clip is ready. It stays still under
+reduced motion.
 
-## Running it
+## Administration
 
-- **The CLI is the admin panel.** `clippet admin` lists clips, jobs, users, sessions and tokens, retries
-  and expires, backs up and restores, all inside the container against the same database
+- **Admin CLI.** `clippet admin` lists clips, jobs, users, sessions and tokens, retries and expires
+  clips, and runs backups and restores, from inside the container. There is no admin web page
   ([operator toolbox](DEPLOY.md#24-operator-toolbox)).
-- **`clippet admin doctor`** checks the configuration, both directories, the database, ffmpeg and the store,
-  and names every mistake rather than the first. Run it against an edited `.env` before you bring the container up.
-- **`/healthz`** reports the version, the queue's depth and its 24-hour failure count. **`/readyz`** pings the
-  store live. Neither names a clip or a user.
-- **A job a crash left running** is requeued or failed on a timer. `admin jobs unstick` does it by hand.
-- **Backups.** `admin backup <dir> --rotate 7` writes a dated snapshot and keeps the newest seven. A copy of
-  the database follows the clips into the store by default, so the store alone can bring the instance back
+- **Config check.** `clippet admin doctor` checks the config, directories, database, ffmpeg and storage,
+  and reports every problem it finds. Run it after editing `.env`, before restarting.
+- **Health endpoints.** `/healthz` reports the version, queue depth and 24-hour failure count; `/readyz`
+  checks storage live. Neither exposes clip or user data.
+- **Stuck jobs.** Jobs interrupted by a crash are retried or marked failed automatically. `admin jobs
+  unstick` does it on demand.
+- **Backups.** `admin backup <dir> --rotate 7` writes a dated database snapshot and keeps seven. A copy of
+  the database is also kept in the storage folder or bucket, so the storage alone is enough to restore
   ([backup and restore](DEPLOY.md#15-backup-and-restore)).
-- **Who gets in.** `REGISTRATION` is `first`, `open`, `closed`, `members` or `role:<id>`. The last two make
-  the Discord bot the door.
-- **Tokens have scopes.** `upload` for a capture tool, `read` for a backup script. Neither can change a password.
-- **What it costs.** Type your provider's prices and Settings shows this month's storage bill. A budget line
-  warns when the store passes it, and only `STORAGE_BUDGET_HARD=1` makes it a cap
-  ([what this instance costs](DEPLOY.md#31-what-this-instance-costs)).
-- **Speed.** Every encode is pinned to the container's CPU quota; `APP_CPUS=4` is the one line worth adding
-  on a real machine. With an NVIDIA card, the opt-in GPU image encodes several times faster.
+- **Registration.** `REGISTRATION` is `first`, `open`, `closed`, `members` or `role:<id>`. The last two let
+  people sign in through the Discord bot.
+- **API tokens** are scoped: `upload` for capture tools, `read` for backup scripts. Neither can change
+  account settings.
+- **Storage costs.** Enter your provider's prices and Settings estimates the monthly bill. Set a budget
+  for a warning, or `STORAGE_BUDGET_HARD=1` to make it a hard limit
+  ([costs](DEPLOY.md#31-what-this-instance-costs)).
+- **Performance.** Encoding uses the container's CPU quota; set `APP_CPUS=4` or more on a real server. An
+  optional GPU image uses NVIDIA hardware encoding.
 
-## What it does not do
+## Not included
 
-- **No telemetry, no call-home, no update check.** With the Discord features and the webhooks unset, the
-  binary makes no outbound request beyond your bucket. The build fails if a second outbound call site appears.
-- **No watermarks, no calls to action.** Nothing is drawn onto your video. A watch page has no sign-up, no
-  "more from this user" and no ads.
-- **No tiers, no per-user quotas, no upsell.** The limits are an upload size cap, a rate limit against abuse
-  and, only if you switch it on, one storage line you drew yourself.
-- **No social layer.** No likes, comments, followers, feeds or public browse page. View counts are the
-  owner's and appear nowhere else.
-- **No per-clip passwords.** A password page would be served to Discord's crawler too and would turn the card
-  into a plain link. The unguessable id is the authentication; *Unlisted* and a short lifetime are for a
-  clip that must not be found.
-- **No upload from a URL.** That would be a second outbound connection, and one that could reach into your
-  LAN. Fetch on the client and pipe it into `curl`.
-- **No multi-tenancy, no federation, no email.** One instance, one store, one group of people. There is no
-  password reset, because there is no email.
+- **No telemetry, analytics or update checks.** Unless you enable Discord features or webhooks, the only
+  outbound connection is to your bucket, and CI fails if a new one is added.
+- **No watermarks or ads.** Nothing is added to your video, and watch pages have no sign-up prompts or
+  related-clips feed.
+- **No tiers or per-user quotas.** The only limits are the upload size cap, a rate limit, and the optional
+  storage budget.
+- **No social features.** No likes, comments, followers, feeds or public browse page. View counts are
+  visible only to the clip's owner.
+- **No per-clip passwords.** A password page would break the Discord card. Use unlisted clips and short
+  lifetimes for anything sensitive; the unguessable id is the protection.
+- **No upload from a URL.** It would add an outbound connection that could reach into your LAN. Download
+  on your machine and upload the file instead.
+- **No multi-tenancy, federation or email.** One instance serves one group of people. There is no
+  password reset, since there is no email.
 
 ## Upgrading
 
-Back up first, check out the tag you want, then `docker compose build --pull && docker compose up -d`.
-Migrations apply during boot, and `/healthz` reports the version that came up
-([upgrading](DEPLOY.md#16-upgrading)). The server is tagged by date, `vYYYY.MM.DD`, and
-[`CHANGELOG.md`](CHANGELOG.md) has one line per tag.
+Back up, check out the new tag, then run `docker compose build --pull && docker compose up -d`.
+Migrations run at startup and `/healthz` shows the new version ([upgrading](DEPLOY.md#16-upgrading)).
+Releases are tagged by date (`vYYYY.MM.DD`) and listed in [`CHANGELOG.md`](CHANGELOG.md).
 
-## The desktop app and Clippet Pass
+## Desktop app and Clippet Pass
 
-**Clippet for Windows and macOS** is this server in a tray app, with the store, the Discord connection and
-updates in a window. It is at [get.clippet.gg](https://get.clippet.gg).
+**Clippet for Windows and macOS** runs this server as a tray app, with storage, the Discord connection
+and updates handled in a window. Download it at [get.clippet.gg](https://get.clippet.gg).
 
-**Clippet Pass** is an optional, paid add-on run by the maintainer: a name on `clippet.gg` over TLS with
-no port forward and no certificate of your own. The product does nothing different for it, and everything
-above is free and complete without it
-([what the product does for a Pass](DEPLOY.md#361-what-the-product-does-for-a-pass-nothing)).
+**Clippet Pass** is an optional paid service from the maintainer that gives your instance a
+`yourname.clippet.gg` address with https and no port forwarding. The self-hosted server is complete
+without it and does not change when you have one
+([details](DEPLOY.md#361-what-the-product-does-for-a-pass-nothing)).
 
-## How it is built
+## Architecture
 
-One static Go binary holds the HTTP server, the transcode worker and the expiry sweeper. State is
-SQLite. A static ffmpeg is copied into the image, so the host needs nothing at runtime. Media is
-transcoded on a scratch volume and written to the store under one prefix per clip. Compose brings up
-exactly one service. The frontend has no build step. Clippet is a clean-room rewrite from a written
-specification; no other clip server's source was read or copied in making it.
+A single Go binary runs the HTTP server, the transcode worker and the expiry sweeper. State is in
+SQLite, media is in the folder or bucket, and a static ffmpeg build is included in the image. The
+compose stack is one service. The frontend is plain HTML, CSS and JavaScript with no build step.
+Clippet was written from scratch from a written spec, without reference to any other clip server's code.
 
-Toolchains live in containers, and the tests run in tiers. [`CONTRIBUTING.md`](CONTRIBUTING.md) has
-the commands and how a change gets in.
+Development happens in containers, so no local Go or Node is needed. See
+[`CONTRIBUTING.md`](CONTRIBUTING.md) for running the tests and submitting changes.
 
 ## Documentation
 
-- [`DEPLOY.md`](DEPLOY.md), the operator guide: every setting, going public, day-to-day operation, backup and restore, upgrades.
-- [`API.md`](API.md): every route, its auth class and its wire format, for a capture tool, a script or a second UI.
-- [`DESIGN.md`](DESIGN.md): the architecture and the design record.
-- [`web/STYLE.md`](web/STYLE.md) and [`docs/brand/`](docs/brand/README.md): the visual system and the mark.
-- [`SECURITY.md`](SECURITY.md): how to report a vulnerability, and what an operator must know.
-- [`THIRD_PARTY.md`](THIRD_PARTY.md): the licences of what is bundled.
+- [`DEPLOY.md`](DEPLOY.md): the operator guide. Configuration, https, day-to-day operation, backups, upgrades.
+- [`API.md`](API.md): every route with its auth and wire format, for capture tools and scripts.
+- [`DESIGN.md`](DESIGN.md): architecture and design decisions.
+- [`web/STYLE.md`](web/STYLE.md) and [`docs/brand/`](docs/brand/README.md): the visual system and the logo.
+- [`SECURITY.md`](SECURITY.md): reporting vulnerabilities, and what operators should know.
+- [`THIRD_PARTY.md`](THIRD_PARTY.md): licenses of bundled software.
 
-Bugs and feature requests go in Issues. Questions about running an instance go in Discussions.
+Bugs and feature requests: Issues. Questions about running an instance: Discussions.
 
-## Licence
+## License
 
-Functional Source License 1.1 with Apache 2.0 as its future licence ([`LICENSE`](LICENSE)). Run it,
-change it and self-host it freely. The one use it withholds is a competing hosted service, and each
-version becomes Apache 2.0 two years after its release. The name, the wordmark and the striped clapper
-are trademarks and not part of the licence ([`docs/brand/`](docs/brand/README.md)).
+Functional Source License 1.1 with Apache 2.0 as the future license ([`LICENSE`](LICENSE)). You can
+use, modify and self-host it freely; the one restriction is offering it as a competing hosted service.
+Each release becomes Apache 2.0 two years after it ships. The Clippet name and logos are trademarks and
+are not covered by the license ([`docs/brand/`](docs/brand/README.md)).
