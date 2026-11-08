@@ -34,6 +34,9 @@ T1 stops with `this diff needs T2: <path>` when a shape path moved (compose, the
 `internal/config`, `internal/store`, the harness core); say so in the pull request and the maintainer runs
 the gate. The heads of `scripts/t0.sh`, `scripts/t1.sh` and `scripts/select.sh` document every knob.
 
+The tests build the image from your checkout through the `compose.build.yaml` overlay by themselves, so
+they never run the published image.
+
 ## Writing an end-to-end bundle
 
 The suite is a directory of drop-ins, `scripts/e2e.d/`, one file per bundle. Its

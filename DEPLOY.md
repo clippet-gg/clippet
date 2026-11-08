@@ -113,7 +113,7 @@ not a table of contents' worth of ordering: §18 "Not covered here" is deliberat
 
 ```sh
 cp .env.example .env          # then edit; every value has a dev default in compose.yaml
-docker compose up -d --build  # builds ./Dockerfile, starts the one service: app
+docker compose up -d          # pulls the published image, starts the one service: app
 docker compose ps             # app (healthy)
 curl -sS http://localhost:8481/readyz     # {"ok":true} once the DB and a live store ping are good
 ```
@@ -726,7 +726,7 @@ docker compose logs -f app                  # structured lines: level=… msg=ht
 docker compose logs --since 30m app         # bounded window (add MSYS_NO_PATHCONV=1 only if you pass container paths)
 docker compose ps                           # the app's health (the one service)
 docker compose restart app                  # picks up nothing new — config is read at boot; use `up -d` after .env edits
-docker compose up -d --build                # rebuild the image from source and recreate
+docker compose pull && docker compose up -d  # take the newest published image and recreate
 ```
 
 **The log is rotated, and it lives on the same disk as everything else.** `compose.yaml` gives `app`
@@ -2150,7 +2150,7 @@ Restoring is §15.4, unchanged.
 
 ## 16. Upgrading
 
-Clippet is one container and one database, so an upgrade is a rebuild and a restart. There is no
+Clippet is one container and one database, so an upgrade is a pull and a restart. There is no
 migration command to run by hand and no maintenance window to declare.
 
 **One exception, once: a stack that still runs the bundled MinIO** (three services in `docker compose
@@ -2166,22 +2166,28 @@ MSYS_NO_PATHCONV=1 docker compose cp app:/tmp/pre-upgrade.db ./backups/
 # 1. take the new revision: pull, then check out the latest vYYYY.MM.DD tag
 git log --oneline -5 && git checkout <revision>
 
-# 2. rebuild and recreate. --pull re-reads the base images; migrations apply during boot,
-#    before the listener opens.
-docker compose build --pull && docker compose up -d
+# 2. pull the new image and recreate. Migrations apply during boot, before the listener opens.
+docker compose pull && docker compose up -d
 
 # 3. confirm
 docker compose ps -a                                   # app (healthy)
 curl -sS http://localhost:8481/readyz                   # {"ok":true}
-curl -sS http://localhost:8481/healthz                  # "version":"…" ← the revision you just built
+curl -sS http://localhost:8481/healthz                  # "version":"…" ← the release you just pulled
 docker compose exec -T app clippet admin stats          # schema: applied=1,2,3,4 ← the new list
 ```
 
-**Set `CLIPPET_VERSION` so step 3 can prove anything.** `compose.yaml` passes it to the build as
-`VERSION`, and the Dockerfile bakes it into the binary; with it unset every build reports `dev`, and then
-neither `/healthz` nor `clippet version` distinguishes the new container from the old one. `admin stats`'
-schema line does not help either — it only moves on a release that carries a migration. So, **two**
-variables, in front of step 2's build:
+**Pulling a tag needs no build arguments.** A published image has its version and commit baked in, so
+step 3's `/healthz` names the release you pulled. Without `CLIPPET_VERSION` in `.env`, compose pulls
+`latest`, the newest release; `CLIPPET_VERSION=2026.11.07` pins that release, and moving the line is the
+upgrade.
+
+**Building from source** is the `compose.build.yaml` overlay (`COMPOSE_FILE=compose.yaml:compose.build.yaml`
+in `.env`), and there the same two variables are build inputs. The overlay passes `CLIPPET_VERSION` to
+the build as `VERSION`, and the Dockerfile bakes it into the binary; with it unset every build reports
+`dev`, and then neither `/healthz` nor `clippet version` distinguishes the new container from the old
+one. `admin stats`' schema line does not help either — it only moves on a release that carries a
+migration. So, **two** variables, in front of the build (`docker compose build --pull`, then
+`docker compose up -d`, in place of step 2):
 
 ```sh
 # both are read at BUILD time, so only a build (or `up --build`) takes them
@@ -2209,7 +2215,7 @@ knows which release is answering (§36) and how you tell two boxes apart that we
 release — an image or a binary other people run — has one more step in a fixed order, and it is
 §17.4.
 
-**`--pull`, not just `--build`.** `golang:1.27-alpine` and `alpine:3.22` are moving tags (§17.1):
+**From source, `--pull`, not just `--build`.** `golang:1.27-alpine` and `alpine:3.22` are moving tags (§17.1):
 without `--pull` Docker keeps using whatever it cached the first time, so a rebuild six months later
 ships the *first* build's `ca-certificates`, `curl` and Go toolchain — the security patches you are
 rebuilding for are exactly what it skips. `docker compose build --pull` re-reads them; it costs a
@@ -2254,8 +2260,8 @@ The concrete example from this codebase: a binary from before the GIF feature wo
 clip and leave `gif_key` pointing at a preview of frames that no longer exist, because clearing it is
 code that binary does not have. Treat "downgrade" as "restore the pre-upgrade backup".
 
-**Zero downtime is not a goal.** One container serves everything, `docker compose up -d --build`
-replaces it, and the gap is a few seconds of connection errors plus however long the build takes. An
+**Zero downtime is not a goal.** One container serves everything, `docker compose up -d` replaces
+it, and the gap is a few seconds of connection errors, plus the build when you build from source. An
 in-flight transcode is interrupted but **not** lost: on `SIGTERM` the worker releases the job back to
 the queue without counting an attempt against it (compose allows `stop_grace_period`, 45 s, before
 `SIGKILL`), and anything still `running` at the next boot is reconciled — released and re-queued if it
@@ -2265,14 +2271,15 @@ restart; the uploader sees the progress bar resume.
 **Per-release checklist**, in order:
 
 1. `admin backup` + copy it out (§15.1). *This is the rollback.*
-2. Set `CLIPPET_VERSION` (above), then `docker compose build --pull && docker compose up -d`.
-3. `/healthz` — the `version` you just set and a small `uptime_s`; then `admin stats` for the new
+2. `docker compose pull && docker compose up -d`. From source: set `CLIPPET_VERSION` (above), then
+   `docker compose build --pull && docker compose up -d`.
+3. `/healthz` — the `version` you just pulled or set and a small `uptime_s`; then `admin stats` for the new
    `schema: applied=…` and clip counts that match what you had.
 4. Open a share page and play the clip; if the instance is public, paste the link somewhere that
    unfurls it. The card is the product, and it is what a bad `PUBLIC_BASE_URL` breaks silently.
 5. `admin orphans` — a clean bill after an upgrade means the release did not lose track of objects.
 6. If anything above is wrong: `docker compose stop app`, restore (§15.4), check out the old
-   revision, `docker compose up -d --build`.
+   revision, set `CLIPPET_VERSION` to the old release, `docker compose up -d` (from source: `up -d --build`).
 
 ## 17. Reproducibility and CI
 
@@ -2374,7 +2381,7 @@ itself, at both ends of the run: its own clips, its own collections (`admin coll
 its own accounts, and an interrupted run's leftovers are cleared by the next run rather than by hand.
 
 ```sh
-docker compose up -d --build
+docker compose up -d
 BASE=https://<your public origin> bash scripts/e2e.sh        # ends in E2E PASS
 ```
 
@@ -2435,7 +2442,8 @@ mean nothing without it.
 
 ### 17.4 Publishing a release
 
-Releases are published by the maintainer; a self-hoster upgrades per §16 and needs none of this. The
+Releases are published by the maintainer; a self-hoster upgrades per §16 and needs none of this. Each
+release tag publishes `ghcr.io/clippet-gg/clippet:<version>` and moves `latest`. The
 runbook — the release manifest first, then the artefact — lives with the hosted plane's own documentation.
 
 ## 19. Accounts, sessions and tokens
@@ -4530,7 +4538,7 @@ AV1, which measure about the same.
 
 ### Upgrading an instance that already has clips
 
-Migration `0012` adds twelve columns and backfills two of them; `docker compose up -d --build` applies
+Migration `0012` adds twelve columns and backfills two of them; `docker compose up -d` applies
 it on boot as always (§16). Clips that already exist keep every byte they have and read correctly:
 their rendition is reported as a **Full** (which is what it is — it was encoded by libx264 from a
 source nobody asked about playability) and their card file, if they have one, as a **Light**. What
@@ -4762,7 +4770,10 @@ independent, so a 1-vCPU box with a card beats a sixteen-core box without one. S
 lanczos are ~82 % of that pipeline.
 
 It is **opt-in, off by default, and a different image**. The ordinary image ships a static ffmpeg with
-no NVENC encoder at all, and `TRANSCODE_HWACCEL=cuda` on it is a boot error naming this section.
+no NVENC encoder at all, and `TRANSCODE_HWACCEL=cuda` on it is a boot error naming this section. The
+GPU image is built from your checkout: `compose.gpu.yaml` carries its own build block, so it builds
+whether or not `compose.build.yaml` is on the list. To pull it instead, set
+`CLIPPET_GPU_IMAGE=ghcr.io/clippet-gg/clippet:gpu-<version>` and run `docker compose pull` before step 3.
 
 ```sh
 # 1. the host: the NVIDIA driver and the container toolkit. Prove it before anything else:
@@ -4775,13 +4786,13 @@ COMPOSE_FILE=compose.yaml:compose.gpu.yaml
 TRANSCODE_HWACCEL=cuda
 EOF
 
-# 3. the same command as always
+# 3. build the GPU image and start it
 docker compose up -d --build
 docker compose logs app | head -1            # ... hwaccel=cuda ...
 ```
 
-`compose.gpu.yaml` is an **override of the one `app` service** — three keys: the Dockerfile target
-`gpu`, its own tag (`CLIPPET_GPU_IMAGE`), and `gpus: all`. The service keeps its name, its port, its
+`compose.gpu.yaml` is an **override of the one `app` service** — three keys: the build (the Dockerfile
+target `gpu`), its own tag (`CLIPPET_GPU_IMAGE`), and `gpus: all`. The service keeps its name, its port, its
 volumes and its healthcheck, so every habit and script that says `app` (`exec app`, `logs app`, the
 E2E's own `up`, §16's upgrade checklist) is the GPU build from then on; without the `COMPOSE_FILE`
 line an operator never resolves the file, never pulls the CUDA base images and never asks the daemon
@@ -6023,7 +6034,7 @@ STORAGE_DIR_HOST=/srv/clippet-media      # the HOST directory, or your NAS mount
 Then the commands you already use:
 
 ```sh
-docker compose up -d --build
+docker compose up -d
 docker compose ps            # one service: app
 docker compose exec -T app clippet admin doctor
 ```
@@ -6207,7 +6218,7 @@ docker compose run --rm --no-deps -v ${STORAGE_DIR_HOST}:/media -e STORAGE_DIR=/
 #
 # 4. NOW flip it: COMPOSE_FILE=compose.yaml (or compose.yaml:compose.fs.yaml), STORAGE_BACKEND=fs,
 #    delete the four S3_* lines
-docker compose down && docker compose up -d --build
+docker compose down && docker compose up -d
 docker compose exec -T app clippet admin doctor
 #   store    ok   STORAGE_DIR=/media writable (probe file created and removed), free=… size=…
 #   bucket   skip STORAGE_BACKEND=fs: there is no bucket …
@@ -6477,7 +6488,7 @@ docker compose -f compose.bundled.yaml run --rm --no-deps -v /srv/clippet-media:
 #    MINIO_ROOT_PASSWORD and every S3_* line (S3_BUCKET is a boot error on the folder store), then
 #    bring up the new file; --remove-orphans removes the old minio and bucket-init CONTAINERS, never
 #    a volume
-docker compose up -d --build --remove-orphans
+docker compose up -d --remove-orphans
 docker compose exec -T app clippet admin doctor
 #   store    ok   STORAGE_DIR=/media writable (probe file created and removed), …
 #   store    ok   .clippet-store is present: this directory is the one an instance has been writing to
@@ -7034,7 +7045,7 @@ somebody else's schedule.
   Check now. Same gate as the page (the owner, or anybody before the first account); without a valid
   `store` it is the ordinary page.
 
-The page never changes anything on its own. It prints, you paste, you `docker compose up -d --build`,
+The page never changes anything on its own. It prints, you paste, you `docker compose up -d`,
 and then either `admin doctor` or the page's own **Check now** — which is the *same* probe: `Ping`,
 put one small object under `{S3_KEY_PREFIX}doctor/`, delete it again, no read-back. Check now is
 single-flighted and cached for ten seconds, so a hundred clicks are one probe; it is a cache and not
@@ -7356,7 +7367,7 @@ agree.
 
 **The wizard.** `/setup` (§35), pick your store, and set the second control to *via a Clippet
 Pass*. The block it prints is your store's own block with `compose.pass.yaml` on the file list,
-opening with the release line and ending with the name's three. Paste it, `docker compose up -d --build`.
+opening with the release line and ending with the name's three. Paste it, `docker compose up -d`.
 
 **By hand**, on a bucket (the folder's own file is `compose.fs.yaml` in place of `compose.nobucket.yaml`):
 

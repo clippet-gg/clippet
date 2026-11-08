@@ -15,7 +15,7 @@ container.
 ```sh
 git clone https://github.com/clippet-gg/clippet.git && cd clippet
 cp .env.example .env            # every value has a working default
-docker compose up -d --build    # one container
+docker compose up -d            # one container
 ```
 
 Open <http://localhost:8481/> and create an account. Registration closes after the first account, so
@@ -31,7 +31,7 @@ nobody else can sign up if the URL is public. Upload a clip and share the link. 
 > docker compose restart app
 > ```
 
-The first build takes a few minutes; later builds take seconds. Stop with `docker compose down`. Clips
+The first start downloads the image. Stop with `docker compose down`. Clips
 and a copy of the database are in the folder; the live database is in the Docker volume
 `clippet_app_data`, which only `down -v` deletes. To change the port, set
 `CLIPPET_PUBLISH=127.0.0.1:PORT` in `.env`. To store clips somewhere else, set `STORAGE_DIR_HOST` before
@@ -163,7 +163,8 @@ reduced motion.
 
 ## Upgrading
 
-Back up, check out the new tag, then run `docker compose build --pull && docker compose up -d`.
+Back up, check out the new tag, then run `docker compose pull && docker compose up -d`. To stay on one
+release, set `CLIPPET_VERSION=2026.11.07` in `.env`.
 Migrations run at startup and `/healthz` shows the new version ([upgrading](DEPLOY.md#16-upgrading)).
 Releases are tagged by date (`vYYYY.MM.DD`) and listed in [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -182,6 +183,8 @@ without it and does not change when you have one
 A single Go binary runs the HTTP server, the transcode worker and the expiry sweeper. State is in
 SQLite, media is in the folder or bucket, and a static ffmpeg build is included in the image. The
 compose stack is one service. The frontend is plain HTML, CSS and JavaScript with no build step.
+To build the image from source instead of pulling it, run
+`docker compose -f compose.yaml -f compose.build.yaml up -d --build`.
 Clippet was written from scratch from a written spec, without reference to any other clip server's code.
 
 Development happens in containers, so no local Go or Node is needed. See
