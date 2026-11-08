@@ -320,13 +320,19 @@ else
 fi
 
 # ---- the lane stack: e2e, then visual ---------------------------------------------------------------------
+# THE SOURCE UNDER TEST (lane image1): compose.yaml pulls the published image, so the lane stack's file set
+# gains compose.build.yaml here (scripts/lib/buildset.sh) — the .env's COMPOSE_FILE line, or compose.yaml when
+# it has none — and every `docker compose` below, e2e.sh and visual.sh inherit it: the stack is built from
+# this checkout and nothing is pulled.
+. scripts/lib/buildset.sh
+buildset_export_ .env
 case ${T1_VISUAL:-} in
   '') PHASES=$(t1_phases_ "$D/paths.txt") ;;
   *)  PHASES=$T1_VISUAL ;;
 esac
 STACK_WAS_UP=0
 if [ -n "$(docker compose -p "$PROJ" ps -q 2>/dev/null)" ]; then STACK_WAS_UP=1; fi
-# the app image the stack runs (compose.yaml: ${CLIPPET_IMAGE:-clippet-app:local}): removed at the end only if it did
+# the app image the stack runs (compose.build.yaml: ${CLIPPET_IMAGE:-clippet-app:local}): removed at the end only if it did
 # not exist before this run AND t1 brought the stack up — never the default tag, which other checkouts build too
 APPIMG=$(t1_envline_ CLIPPET_IMAGE)
 IMG_WAS=1; [ -z "$APPIMG" ] || docker image inspect "$APPIMG" >/dev/null 2>&1 || IMG_WAS=0

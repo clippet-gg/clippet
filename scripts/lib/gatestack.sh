@@ -79,8 +79,10 @@ GS_GREEN=.e2e/checkpoints/gate-green.txt     # the last green gate's commit: wha
 # reference sets must exist here or the key-diff refuses the gate: the version string itself proves nothing about
 # the gate's shape. GATE_RELEASE=1 runs pass the real one through.
 gs_values_() {
-  local files=compose.yaml hw=
-  if [ "$GATE_GPU" = 1 ]; then files=compose.yaml:compose.gpu.yaml; hw=cuda; fi
+  # compose.build.yaml always (lane image1): compose.yaml pulls the published image, and the gate proves THIS
+  # checkout's source, so the overlay builds it; compose.gpu.yaml after it keeps its target and its tag.
+  local files=compose.yaml:compose.build.yaml hw=
+  if [ "$GATE_GPU" = 1 ]; then files=compose.yaml:compose.build.yaml:compose.gpu.yaml; hw=cuda; fi
   cat <<EOF
 COMPOSE_PROJECT_NAME=$GATE_PROJECT
 CLIPPET_IMAGE=$GS_IMAGE
@@ -504,6 +506,8 @@ gs_selftest_() {
   # no client image at all (§20 erratum 346: the app's `admin objects` does what `mc` did).
   ok_ "$(grep -cE '^    image: rustfs/rustfs:[^@ ]+@sha256:[0-9a-f]{64}$' compose.e2e-bucket.yaml)/$(grep -cE '^    image:' compose.e2e-bucket.yaml)" 1/1 "compose.e2e-bucket.yaml pins its one image, the S3 server, by digest"
   ok_ "$(grep -c 'bash "$GS" pins' scripts/gate.sh)" 1 "gate.sh runs the pins before stage 1"
+  ok_ "$(gs_values_ | sed -n 's/^COMPOSE_FILE=//p' | tr ':' '\n' | grep -c '^compose.build.yaml$')" 1 "the gate stack's file set carries compose.build.yaml: it builds this checkout, never pulls"
+  ok_ "$(bash scripts/lib/buildset.sh selftest >/dev/null 2>&1; echo $?)" 0 "scripts/lib/buildset.sh selftest (the harness's own overlay rule) passes"
   ok_ "$(kv_ rec-docker)/$(kv_ rec-nvidia)" 99.1/555.55 "docker= is the server version, nvidia= the driver"
   ok_ "$(kv_ rec-images | grep -cE '^[0-9a-f]{64}$')" 1 "images= is a sha256"
   ok_ "$( [ "$(kv_ moved-images)" != "$(kv_ rec-images)" ] && echo moved)" moved "…that moves when a base image's local id does"

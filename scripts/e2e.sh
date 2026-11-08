@@ -186,6 +186,11 @@ E2E_PRODUCT_PATHS="internal cmd web go.mod go.sum Dockerfile compose.yaml"
 # LAST entry, as compose lets a later file win) — which is how the gate's own stack is selected without
 # touching the checkout's `.env` (scripts/lib/gatestack.sh, run 9). Every read of "the stack's .env" uses it.
 E2E_ENVF=${COMPOSE_ENV_FILES:-.env}; E2E_ENVF=${E2E_ENVF##*,}
+# THE SOURCE UNDER TEST (lane image1): compose.yaml pulls the published image, so every stack this run builds
+# carries compose.build.yaml, added to the stack's own file set (the shell's COMPOSE_FILE, else the env file's
+# line, else compose.yaml) by scripts/lib/buildset.sh. A lane .env needs no COMPOSE_FILE line for it.
+. scripts/lib/buildset.sh
+buildset_export_ "$E2E_ENVF"
 e2e_product_key_() {   # e2e_product_key_ [env file]  (the argument exists for the self-test)
   local envf=${1:-$E2E_ENVF} k dirty f files
   k=$(git ls-tree HEAD -- $E2E_PRODUCT_PATHS 2>/dev/null | sha256sum | cut -c1-12)

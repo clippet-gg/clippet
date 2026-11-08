@@ -75,11 +75,17 @@ st_03() {
                                     miss=$(comm -23 "$t/names.cfg" "$t/names.env"); rm -rf "$t"
                                     [ -z "$miss" ] || { printf '%s\n' "$miss" | sed 's/^/  /'; echo "  the variable(s) above are read by internal/config and passed by NO row of compose.yaml's app environment: block, so a .env line setting them is silently inert (§20 erratum 292): add the row with its documented default"; exit 1; }
 }
-ck_add 04 "[check] no compose file runs a moving :latest tag (§20 erratum 292; AUDIT #10: the production tunnel ran cloudflare/cloudflared:latest, so every docker compose up -d after a registry push was an unreviewed upgrade of the ingress. Every other image here is pinned — DEPLOY.md §17.1 — and this stage keeps the set closed over compose*.yaml, comments included: a :latest in a comment is a recipe somebody will paste)"
+ck_add 04 "[check] no compose file runs a moving :latest tag (§20 erratum 292; AUDIT #10: the production tunnel ran cloudflare/cloudflared:latest, so every docker compose up -d after a registry push was an unreviewed upgrade of the ingress. Every other image here is pinned — DEPLOY.md §17.1 — and this stage keeps the set closed over compose*.yaml, comments included: a :latest in a comment is a recipe somebody will paste. A default spelled \${TAG:-latest} or a -latest tag counts too. ONE exemption, lane image1: this project's OWN image, ghcr.io/clippet-gg/clippet, whose latest and gpu-latest tags compose.yaml's default pulls — they are its own release tags, moved only by its own release workflow (.github/workflows/image.yml) on a release tag, so they are a release, not an unreviewed upgrade. Only that reference is stripped from a line before the grep; anything else on the same line still fails)"
 st_04() {
-                                    latest_grep() { grep -n ':latest' "$@" || [ $? = 1 ]; }
-                                    t=$(mktemp -d); printf 'services:\n  a:\n    image: x/y:latest\n' > "$t/a.yaml"; printf 'services:\n  a:\n    image: x/y:1.2.3\n' > "$t/b.yaml"
-                                    n=$(latest_grep "$t"/*.yaml | wc -l | tr -d ' '); rm -rf "$t"; [ "$n" = 1 ] || { echo "  self-test failed: the grep must flag a.yaml's :latest and clear b.yaml (got $n hits)"; exit 1; }
+                                    latest_grep() { grep -nE '(:|-)latest([^A-Za-z0-9_.]|$)' "$@" | sed -E 's#ghcr\.io/clippet-gg/clippet:(\$\{[A-Z_]+:-)?(gpu-)?latest##g' | grep -E '(:|-)latest([^A-Za-z0-9_.]|$)' || [ $? = 1 ]; }
+                                    t=$(mktemp -d)
+                                    printf 'services:\n  a:\n    image: x/y:latest\n' > "$t/a.yaml"; printf 'services:\n  a:\n    image: x/y:1.2.3\n' > "$t/b.yaml"
+                                    printf 'services:\n  a:\n    image: ${A_IMAGE:-x/y:${T:-latest}}\n' > "$t/c.yaml"; printf '# pull it: docker pull x/y:latest\n' > "$t/d.yaml"
+                                    printf 'services:\n  a:\n    image: ${CLIPPET_IMAGE:-ghcr.io/clippet-gg/clippet:${CLIPPET_VERSION:-latest}}\n# or ghcr.io/clippet-gg/clippet:latest, ghcr.io/clippet-gg/clippet:gpu-latest\n' > "$t/e.yaml"
+                                    printf 'services:\n  a:\n    image: ghcr.io/clippet-gg/clippet:latest # beside x/y:latest\n' > "$t/f.yaml"; printf 'services:\n  a:\n    image: ghcr.io/clippet-gg/clippet-other:latest\n' > "$t/g.yaml"
+                                    hits=$(latest_grep "$t"/*.yaml); rm -rf "$t"
+                                    got=$(printf '%s\n' "$hits" | sed -n 's#^.*/\([a-z]\)\.yaml:.*#\1#p' | tr -d '\n')
+                                    [ "$got" = acdfg ] || { echo "  self-test failed: the grep must flag a third-party :latest (a), a \${T:-latest} default (c), one in a comment (d), one beside our own on a line (f) and another image of the same owner (g), and clear a pin (b) and our own image's three spellings (e) (got '$got')"; exit 1; }
                                     hits=$(latest_grep compose*.yaml); [ -z "$hits" ] || { printf '%s\n' "$hits" | sed 's/^/  /'; echo "  the compose file(s) above name a :latest tag: pin the version (DEPLOY.md §17.1 says how to bump it)"; exit 1; }
 }
 ck_add 05 "[check] jget.py selftest"
