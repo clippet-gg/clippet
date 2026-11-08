@@ -163,7 +163,7 @@ reduced motion.
 
 ## Upgrading
 
-Back up, check out the new tag, then run `docker compose pull && docker compose up -d`. To stay on one
+Back up, check out the new tag, then run `docker compose pull && docker compose up -d`. To pin a
 release, set `CLIPPET_VERSION=2026.11.07` in `.env`.
 Migrations run at startup and `/healthz` shows the new version ([upgrading](DEPLOY.md#16-upgrading)).
 Releases are tagged by date (`vYYYY.MM.DD`) and listed in [`CHANGELOG.md`](CHANGELOG.md).
