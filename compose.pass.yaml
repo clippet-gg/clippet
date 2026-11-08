@@ -3,6 +3,9 @@
 # complete, public and free without it. Nothing in the app changes when this file is selected — the app never talks
 # to this container and has no idea it is there.
 #
+# It composes over compose.yaml as it stands: the app is the published image, which is the shape a
+# Pass customer runs. A checkout that builds from source adds compose.build.yaml to the list as well.
+#
 # Select it in `.env` once the portal has given you a token. The lines — the release first, the file
 # list, the name's own and the token — are DEPLOY.md §36.2's, and the `/setup` wizard prints the whole
 # block for whichever store you are on; this header deliberately does not copy them, so there is one

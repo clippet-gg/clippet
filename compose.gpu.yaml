@@ -11,13 +11,26 @@
 # line an operator without a card never resolves this file, never pulls the
 # CUDA bases and never asks the daemon for a device.
 #
-# Three keys change: the Dockerfile target, the tag, and the device grant.
-# `gpus: all` is the Compose v2 device shorthand; the Swarm-only
-# `deploy.resources` block is not used for the reason `compose.yaml` records
-# beside `cpus`.
+# The GPU flavour is BUILT from this checkout (compose.yaml alone pulls the CPU
+# image), so this file carries the whole build block, the same one
+# compose.build.yaml has plus the `gpu` target. To pull the published GPU image
+# instead, set CLIPPET_GPU_IMAGE to ghcr.io/clippet-gg/clippet:gpu-<version>
+# (published from 2026.11.07; ghcr.io/clippet-gg/clippet:gpu-latest from the
+# next release) and run `docker compose pull && docker compose up -d`.
+#
+# Three things change: the build (with its Dockerfile target), the tag, and
+# the device grant. `gpus: all` is the Compose v2 device shorthand; the
+# Swarm-only `deploy.resources` block is not used for the reason
+# `compose.yaml` records beside `cpus`.
 services:
   app:
     build:
+      context: .
+      dockerfile: Dockerfile
       target: gpu
+      args:
+        # The version and the commit baked into the binary, as in compose.build.yaml.
+        VERSION: ${CLIPPET_VERSION:-dev}
+        COMMIT: ${CLIPPET_COMMIT:-}
     image: ${CLIPPET_GPU_IMAGE:-clippet-app:gpu}
     gpus: all

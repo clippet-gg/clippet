@@ -2,7 +2,7 @@
 # or by hand for an existing tag.
 #
 #   ghcr.io/<owner>/<repo>:<version>, :latest, :sha-<commit12>   the CPU image, linux/amd64 + linux/arm64
-#   ghcr.io/<owner>/<repo>:gpu-<version>                         the opt-in NVENC flavour, linux/amd64 only
+#   ghcr.io/<owner>/<repo>:gpu-<version>, :gpu-latest            the opt-in NVENC flavour, linux/amd64 only
 #
 # <version> is the tag without its `v`, the same string the binary reports (DEPLOY.md §17.4). The Dockerfile's
 # build stage cross-compiles, so the arm64 image does not compile Go under emulation; QEMU only runs the
@@ -109,6 +109,7 @@ jobs:
           flavor: latest=false
           tags: |
             type=raw,value=gpu-${{ steps.v.outputs.version }}
+            type=raw,value=gpu-latest
           labels: |
             org.opencontainers.image.version=${{ steps.v.outputs.version }}
             org.opencontainers.image.revision=${{ steps.c.outputs.sha }}

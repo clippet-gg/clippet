@@ -1,4 +1,4 @@
-# compose.yaml (Phase 1, DESIGN.md §2). All tags pinned. `docker compose up -d --build` builds ./Dockerfile.
+# compose.yaml (Phase 1, DESIGN.md §2). `docker compose up -d` pulls the published image; compose.build.yaml builds ./Dockerfile.
 # ONE service since §20 erratum 345: the app, keeping the media in a FOLDER on this machine
 # (STORAGE_BACKEND=fs, DEPLOY.md §32). There is no bundled object-storage server any more: the
 # images this file used to pull for one were withdrawn by their publisher (run 22). A bucket of your
@@ -8,26 +8,13 @@
 name: clippet
 services:
   app:
-    # VERSION reaches the Dockerfile's `ARG VERSION` and is baked into the
-    # binary as `-X main.version` (§20 erratum 104). Without it every local
-    # build reported "dev", so §16's upgrade checklist had no way to confirm
-    # from the outside that the new binary is the one running. Set
-    # CLIPPET_VERSION in .env to whatever names the revision you deployed --
-    # `git describe --always --dirty` is the obvious value -- and /healthz then
-    # reports it.
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        VERSION: ${CLIPPET_VERSION:-dev}
-        # The commit that VERSION names (§20 erratum 303), baked in as
-        # `-X main.commit` beside it and published by GET /api/instance. Empty
-        # is the default and reads as "this build does not say"; the release
-        # runbook (DEPLOY.md §17.4) sets CLIPPET_COMMIT from
-        # `git rev-parse HEAD`, and scripts/e2e.sh exports it for every stack
-        # it builds. Read at BUILD time, like VERSION.
-        COMMIT: ${CLIPPET_COMMIT:-}
-    image: ${CLIPPET_IMAGE:-clippet-app:local}   # overridable so a side-by-side lane stack (worktree + own project) builds its own tag
+    # THE PUBLISHED IMAGE. Every release tag publishes ghcr.io/clippet-gg/clippet:<version>
+    # and moves ghcr.io/clippet-gg/clippet:latest (.github/workflows/image.yml). CLIPPET_VERSION
+    # in .env pins one release, and CLIPPET_IMAGE names any image outright. That moving tag is
+    # the one check.sh stage 04 allows: it is this project's own release tag, moved only by its
+    # own release workflow. To build from this checkout instead, add compose.build.yaml (its
+    # header says how); the tests do that by themselves.
+    image: ${CLIPPET_IMAGE:-ghcr.io/clippet-gg/clippet:${CLIPPET_VERSION:-latest}}
     restart: unless-stopped
     # Resource ceilings (§20 erratum 104). Nothing here had a memory or CPU
     # limit, while one process runs the HTTP server, the sweeper AND every

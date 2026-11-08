@@ -1,19 +1,39 @@
 # compose.build.yaml — build the app from this checkout (the from-source overlay).
 #
+# compose.yaml pulls the published image (ghcr.io/clippet-gg/clippet). This overlay builds ./Dockerfile
+# from this checkout instead:
+#
 #   docker compose -f compose.yaml -f compose.build.yaml up -d --build
 #
-# Today compose.yaml still carries this same build block itself, so this file changes nothing yet; it
-# exists so the command above keeps working unchanged once that block goes.
-# When the first image is published, compose.yaml pulls it and loses its build block; this overlay is
-# then the one way to build from source.
+# or once, in `.env`, so every plain `docker compose up -d --build` builds:
+#
+#   COMPOSE_FILE=compose.yaml:compose.build.yaml
+#
+# The test harness (scripts/e2e.sh, scripts/t1.sh, scripts/lib/gatestack.sh) adds this file by itself,
+# so every stack it makes builds the source under test and never pulls.
+#
+# The tag defaults to clippet-app:local, never the published name, so a local build cannot pass for a
+# release. CLIPPET_IMAGE set in `.env` wins in both files: a lane stack names its own tag with it.
 services:
   app:
+    # VERSION reaches the Dockerfile's `ARG VERSION` and is baked into the
+    # binary as `-X main.version` (§20 erratum 104). Without it every local
+    # build reported "dev", so §16's upgrade checklist had no way to confirm
+    # from the outside that the new binary is the one running. Set
+    # CLIPPET_VERSION in .env to whatever names the revision you built --
+    # `git describe --always --dirty` is the obvious value -- and /healthz then
+    # reports it. (In compose.yaml the same variable selects the published tag;
+    # here it is only a build input.)
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        # The same two arguments compose.yaml passes (DESIGN.md §20 errata 104 and 303): the version and
-        # the commit baked into the binary, reported by /healthz and GET /api/instance.
         VERSION: ${CLIPPET_VERSION:-dev}
+        # The commit that VERSION names (§20 erratum 303), baked in as
+        # `-X main.commit` beside it and published by GET /api/instance. Empty
+        # is the default and reads as "this build does not say"; the release
+        # runbook (DEPLOY.md §17.4) sets CLIPPET_COMMIT from
+        # `git rev-parse HEAD`, and scripts/e2e.sh exports it for every stack
+        # it builds. Read at BUILD time, like VERSION.
         COMMIT: ${CLIPPET_COMMIT:-}
-    image: ${CLIPPET_IMAGE:-clippet-app:local}
+    image: ${CLIPPET_IMAGE:-clippet-app:local}   # overridable so a side-by-side lane stack (worktree + own project) builds its own tag
