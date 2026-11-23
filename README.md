@@ -171,7 +171,7 @@ Releases are tagged by date (`vYYYY.MM.DD`) and listed in [`CHANGELOG.md`](CHANG
 ## Desktop app and Clippet Pass
 
 **Clippet for Windows and macOS** runs this server as a tray app, with storage, the Discord connection
-and updates handled in a window. Download it at [get.clippet.gg](https://get.clippet.gg).
+and updates handled in a window. Download it at [clippet.gg/get](https://clippet.gg/get).
 
 **Clippet Pass** is an optional paid service from the maintainer that gives your instance a
 `yourname.clippet.gg` address with https and no port forwarding. The self-hosted server is complete
