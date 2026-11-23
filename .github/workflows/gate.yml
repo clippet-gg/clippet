@@ -31,6 +31,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # The E2E's fixtures (scripts/testclips.sh) and its box walk use the HOST ffmpeg/ffprobe, 6.1 or newer
+      # (CLAUDE.md: the host needs ffmpeg); a hosted runner has none, and the gate's step 2 stopped on it the
+      # first time the suite got that far (2026-11-23). Ubuntu 24.04's package is 6.1.1.
+      - name: ffmpeg on the host
+        shell: bash
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg && ffmpeg -version | head -1
       - name: T2
         shell: bash
         env:
