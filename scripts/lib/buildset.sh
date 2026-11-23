@@ -35,8 +35,11 @@ buildset_files_() {
 
 # buildset_export_ [env file] — export COMPOSE_FILE (and COMPOSE_PATH_SEPARATOR=:) for this shell and its children
 buildset_export_() {
-  local envf=${1:-.env} cur
-  cur=${COMPOSE_FILE:-$(sed -n 's/^COMPOSE_FILE=//p' "$envf" 2>/dev/null | tail -1 | tr -d '\r"')}
+  local envf=${1:-.env} cur=${COMPOSE_FILE:-}
+  # A missing env file (a fresh clone, CI's checkout) is the default set, not an exit: under the callers'
+  # `set -eo pipefail` sed's status would otherwise end the script before it prints a line (the nightly gate,
+  # 2026-11-08 to 2026-11-23).
+  [ -n "$cur" ] || cur=$({ sed -n 's/^COMPOSE_FILE=//p' "$envf" 2>/dev/null || true; } | tail -1 | tr -d '\r"')
   COMPOSE_FILE=$(buildset_files_ "$cur")
   COMPOSE_PATH_SEPARATOR=:
   export COMPOSE_FILE COMPOSE_PATH_SEPARATOR
@@ -57,8 +60,9 @@ buildset_selftest_() {
   printf 'A=1\n' > "$t/env"
   ok_ "$(env -u COMPOSE_FILE bash -c ". scripts/lib/buildset.sh; buildset_export_ '$t/env'; printf '%s' \"\$COMPOSE_FILE\"")" compose.yaml:compose.build.yaml "an env file with no COMPOSE_FILE line (a lane .env) still builds"
   ok_ "$(COMPOSE_FILE=compose.yaml:compose.fs.yaml bash -c ". scripts/lib/buildset.sh; buildset_export_ '$t/env'; printf '%s' \"\$COMPOSE_FILE\"")" compose.yaml:compose.build.yaml:compose.fs.yaml "the shell's COMPOSE_FILE wins over the env file"
+  ok_ "$(env -u COMPOSE_FILE bash -c "set -euo pipefail; . scripts/lib/buildset.sh; buildset_export_ '$t/missing'; printf '%s' \"\$COMPOSE_FILE\"" 2>&1)" compose.yaml:compose.build.yaml "no env file at all (a fresh clone, CI) is the default set under set -euo pipefail, not an exit"
   rm -rf "$t"
-  if [ "$bad" = 0 ]; then echo "[buildset selftest] PASS ($n checks: the overlay after compose.yaml and before every later overlay, an unset or lane set, ';' read, idempotent, the shell over the env file)"; return 0; fi
+  if [ "$bad" = 0 ]; then echo "[buildset selftest] PASS ($n checks: the overlay after compose.yaml and before every later overlay, an unset or lane set, ';' read, idempotent, the shell over the env file, no env file at all)"; return 0; fi
   echo "[buildset selftest] FAILED ($bad of $n)"; return 1
 }
 

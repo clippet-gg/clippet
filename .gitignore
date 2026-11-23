@@ -54,3 +54,4 @@ node_modules/
 CLAUDE.local.md
 # a local MCP server list (per machine)
 .mcp.json
+.playwright-mcp/

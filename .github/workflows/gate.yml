@@ -47,4 +47,5 @@ jobs:
           name: gate-logs-${{ github.run_id }}
           path: .e2e/gate-*/
           if-no-files-found: warn
+          include-hidden-files: true # .e2e/ is a dot-directory; without this the upload is empty
           retention-days: 14

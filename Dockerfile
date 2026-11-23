@@ -44,7 +44,7 @@
 # result. As siblings off one parent, check.sh can run both at once and the
 # shorter hides inside the longer. Everything they SHARE (the source copy,
 # gofmt, `go mod verify`) is in `testsrc` and is therefore done once.
-FROM golang:1.27-alpine@sha256:fa3d596898d9f126af7c01d14ee7597bab3f39cccf392ef36b69fe77cd681f18 AS base
+FROM golang:1.27-alpine@sha256:70bd7ddea8b6cbe5d6943cde279d6b67feb10cc924fb9100d1d8757c1575b280 AS base
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
@@ -52,7 +52,7 @@ RUN go mod download
 # The binary's own lineage. It repeats `base`'s first two layers rather than
 # starting FROM it, because `base` is the TARGET platform's (the test stages
 # run what they compile) and this stage is the BUILDER's.
-FROM --platform=$BUILDPLATFORM golang:1.27-alpine@sha256:fa3d596898d9f126af7c01d14ee7597bab3f39cccf392ef36b69fe77cd681f18 AS build
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine@sha256:70bd7ddea8b6cbe5d6943cde279d6b67feb10cc924fb9100d1d8757c1575b280 AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download

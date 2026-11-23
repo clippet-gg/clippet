@@ -132,7 +132,12 @@ stage() {
     visual) verdict="$(grep -E '^\[visual\] [0-9]+ shots' "$log" | tail -1 | cut -c1-80) $(grep -E '^\[visual\] (PASS|FAIL)$' "$log" | tail -1)" ;;
   esac
   if [ "$rc" = 0 ]; then say "[gate] $n $name: PASS in $((SECONDS - t0)) s — ${verdict:-?}"
-  else say "[gate] $n $name: FAIL (exit $rc) in $((SECONDS - t0)) s — ${verdict:-no verdict line; read the log}"; GATE_FAILED="$GATE_FAILED $name"; fi
+  else
+    say "[gate] $n $name: FAIL (exit $rc) in $((SECONDS - t0)) s — ${verdict:-no verdict line; read the log}"; GATE_FAILED="$GATE_FAILED $name"
+    # The tail of the failing stage's log goes to this output too, so a run whose logs nobody can open (a CI
+    # run, a terminal that is all that is left) still says WHY, not only that. GATE_TAIL lines, default 60.
+    say "[gate] $n $name: the last ${GATE_TAIL:-60} lines of $log —"; tail -n "${GATE_TAIL:-60}" "$log" | sed 's/^/    /'
+  fi
 }
 # The E2E and the visual pass must NOT run under MSYS_NO_PATHCONV; check.sh sets it for itself.
 # On the gate stack both run inside `gatestack.sh run`, which exports COMPOSE_ENV_FILES / COMPOSE_PROJECT_NAME
