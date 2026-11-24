@@ -91,13 +91,23 @@ PW_IMAGE=${PW_IMAGE:-clippet-visual:$PW_VERSION}
 # container is told to RESOLVE `localhost` to the host (`--host-resolver-rules`); the URL, and so the Host
 # header the signature was made for, is unchanged. Measured: without it a signed link is
 # ERR_CONNECTION_REFUSED in the container, with it 200.
+# …on Docker Desktop and OrbStack, where host.docker.internal reaches the host's LOOPBACK. A plain Linux daemon (a
+# hosted runner, the nightly gate) has no such name, and `host-gateway` lands on the host's bridge address, where a
+# stack published on 127.0.0.1 is not listening (the first two CI visual passes, 2026-11-24: ENOTFOUND, then
+# ECONNREFUSED 172.17.0.1). There the browser container joins the HOST network and asks the stack's own address.
 VISUAL_HOST_MAP=0
+VISUAL_NET="--add-host host.docker.internal:host-gateway"
+case $(docker info --format '{{.OperatingSystem}}' 2>/dev/null) in
+  *"Docker Desktop"*|*OrbStack*) VISUAL_DAEMON=desktop ;;
+  *) VISUAL_DAEMON=linux ;;
+esac
 case $BASE in
-  http://localhost:*|http://127.0.0.1:*) IN_BASE="http://host.docker.internal:${BASE##*:}"; VISUAL_HOST_MAP=1;;
-  http://localhost|http://127.0.0.1) IN_BASE="http://host.docker.internal"; VISUAL_HOST_MAP=1;;
+  http://localhost:*|http://127.0.0.1:*|http://localhost|http://127.0.0.1)
+    if [ "$VISUAL_DAEMON" = linux ]; then IN_BASE=$BASE; VISUAL_NET="--network host"
+    else case $BASE in http://127.0.0.1*) IN_BASE="http://host.docker.internal${BASE#http://127.0.0.1}";; *) IN_BASE="http://host.docker.internal${BASE#http://localhost}";; esac; VISUAL_HOST_MAP=1; fi ;;
   *) IN_BASE=$BASE;;
 esac
-echo "[visual] stack $BASE (in the container: $IN_BASE; localhost resolved to the host in the browser: $VISUAL_HOST_MAP); image $PW_IMAGE; out $OUT"
+echo "[visual] stack $BASE (in the container: $IN_BASE; daemon: $VISUAL_DAEMON; localhost resolved to the host in the browser: $VISUAL_HOST_MAP); image $PW_IMAGE; out $OUT"
 # The throwaway accounts, pruned the way scripts/e2e.sh sweeps its own (§20 errata 86 and 272; DEPLOY
 # §8), at BOTH ends of the pass. visual.js deletes the clip and the collection it made in a `finally`,
 # so `visual_<epoch>` owns nothing by the end and `--no-clips` — which skips any match that still owns
@@ -192,10 +202,8 @@ docker build -q --build-arg "PW_VERSION=$PW_VERSION" -t "$PW_IMAGE" - < Dockerfi
 # and the next run's `rm -rf "$OUT"` failed on it. On Git Bash NTFS ignores ownership and nothing is chowned.
 VISUAL_CHOWN=; case $(uname -s) in Linux) VISUAL_CHOWN="$(id -u):$(id -g)" ;; esac
 # shellcheck disable=SC2086 # VISUAL_MOUNTS is a deliberate argument list, built above.
-# --add-host: host.docker.internal is Docker Desktop's name for the host; on a plain Linux daemon (a hosted
-# runner, the nightly gate's first visual pass, 2026-11-24) it resolves to nothing, and `host-gateway` is the
-# daemon's own spelling of the same address. Docker Desktop accepts the flag and keeps its own mapping.
-docker run --rm -t --add-host host.docker.internal:host-gateway \
+# shellcheck disable=SC2086 # VISUAL_NET is a deliberate argument list, chosen above.
+docker run --rm -t $VISUAL_NET \
   $VISUAL_MOUNTS -v "$OUTW":/out \
   -e "BASE=$IN_BASE" -e "PUBLIC_BASE=$BASE" ${VISUAL_WORKERS:+-e "VISUAL_WORKERS=$VISUAL_WORKERS"} ${VISUAL_PROVE:+-e "VISUAL_PROVE=$VISUAL_PROVE"} ${VISUAL_ONLY:+-e "VISUAL_ONLY=$VISUAL_ONLY"} -e "VISUAL_HOST_MAP=$VISUAL_HOST_MAP" -e "VISUAL_CHOWN=$VISUAL_CHOWN" -w /pw \
   "$PW_IMAGE" sh -c 'rc=0; node /src/scripts/lib/visual.js || rc=$?; [ -z "$VISUAL_CHOWN" ] || chown -R "$VISUAL_CHOWN" /out; exit $rc'
