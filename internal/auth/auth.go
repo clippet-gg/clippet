@@ -18,6 +18,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -437,10 +438,26 @@ func CreateSession(ctx context.Context, d *db.DB, cfg config.Config, userID, use
 // BcryptCost is the fixed work factor (§14).
 const BcryptCost = 12
 
+// bcryptCost is the factor HashPassword uses: BcryptCost, except inside a test
+// binary that called TestingBcryptCost. No test here measures the hash's
+// strength, and at cost 12 under -race a burst of eight registrations on a
+// four-vCPU runner outran the 15 s request timeout (the nightly gate,
+// 2026-11-23).
+var bcryptCost = BcryptCost
+
+// TestingBcryptCost lowers the work factor for the rest of a test binary and
+// refuses to run anywhere else.
+func TestingBcryptCost(cost int) {
+	if !testing.Testing() {
+		panic("auth.TestingBcryptCost outside a test binary")
+	}
+	bcryptCost = cost
+}
+
 // HashPassword hashes pw with bcrypt cost 12. bcrypt itself rejects inputs
 // longer than 72 bytes; the 8-byte minimum is validated by the handler.
 func HashPassword(pw string) (string, error) {
-	h, err := bcrypt.GenerateFromPassword([]byte(pw), BcryptCost)
+	h, err := bcrypt.GenerateFromPassword([]byte(pw), bcryptCost)
 	if err != nil {
 		return "", err
 	}
