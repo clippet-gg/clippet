@@ -192,7 +192,10 @@ docker build -q --build-arg "PW_VERSION=$PW_VERSION" -t "$PW_IMAGE" - < Dockerfi
 # and the next run's `rm -rf "$OUT"` failed on it. On Git Bash NTFS ignores ownership and nothing is chowned.
 VISUAL_CHOWN=; case $(uname -s) in Linux) VISUAL_CHOWN="$(id -u):$(id -g)" ;; esac
 # shellcheck disable=SC2086 # VISUAL_MOUNTS is a deliberate argument list, built above.
-docker run --rm -t \
+# --add-host: host.docker.internal is Docker Desktop's name for the host; on a plain Linux daemon (a hosted
+# runner, the nightly gate's first visual pass, 2026-11-24) it resolves to nothing, and `host-gateway` is the
+# daemon's own spelling of the same address. Docker Desktop accepts the flag and keeps its own mapping.
+docker run --rm -t --add-host host.docker.internal:host-gateway \
   $VISUAL_MOUNTS -v "$OUTW":/out \
   -e "BASE=$IN_BASE" -e "PUBLIC_BASE=$BASE" ${VISUAL_WORKERS:+-e "VISUAL_WORKERS=$VISUAL_WORKERS"} ${VISUAL_PROVE:+-e "VISUAL_PROVE=$VISUAL_PROVE"} ${VISUAL_ONLY:+-e "VISUAL_ONLY=$VISUAL_ONLY"} -e "VISUAL_HOST_MAP=$VISUAL_HOST_MAP" -e "VISUAL_CHOWN=$VISUAL_CHOWN" -w /pw \
   "$PW_IMAGE" sh -c 'rc=0; node /src/scripts/lib/visual.js || rc=$?; [ -z "$VISUAL_CHOWN" ] || chown -R "$VISUAL_CHOWN" /out; exit $rc'
